@@ -1,7 +1,7 @@
 // calib.cpp
 // Calling convention:
 // calib board_w board_h number_of_views //
-// Hit ‘p’ to pause/unpause, ESC to quit //
+// Hit 'p' to pause/unpause, ESC to quit //
 #include <cv.h>
 #include <highgui.h>
 #include <stdio.h>
@@ -10,12 +10,13 @@
 int n_boards = 0; //Will be set by input list
 const int board_dt = 20; //Wait 20 frames per chessboard view int board_w;
 int board_h;
+int board_w;
 
 int main(int argc, char* argv[])
 {
     if(argc != 4)
     {
-        printf(“ERROR: Wrong number of input parameters\n”);
+        printf("ERROR: Wrong number of input parameters\n");
         return -1;
     }
 
@@ -28,7 +29,7 @@ int main(int argc, char* argv[])
     CvCapture* capture = cvCreateCameraCapture(0); 
     assert( capture );
     
-    cvNamedWindow( “Calibration” ); //ALLOCATE STORAGE
+    cvNamedWindow( "Calibration" ); //ALLOCATE STORAGE
     CvMat* image_points         = cvCreateMat(n_boards*board_n, 2, CV_32FC1);
     CvMat* object_points        = cvCreateMat(n_boards*board_n, 3, CV_32FC1);
     CvMat* point_counts         = cvCreateMat(n_boards, 1, CV_32SC1);
@@ -42,10 +43,11 @@ int main(int argc, char* argv[])
     IplImage *image = cvQueryFrame(capture);
     IplImage *gray_image = cvCreateImage(cvGetSize(image), 8, 1);//subpixel
 
-    // CAPTURE CORNER VIEWS LOOP UNTIL WE’VE GOT n_boards
+    // CAPTURE CORNER VIEWS LOOP UNTIL WE'VE GOT n_boards
     // SUCCESSFUL CAPTURES (ALL CORNERS ON THE BOARD ARE FOUND) //
     while(successes < n_boards) 
     {
+		printf("%i", successes);
         //Skip every board_dt frames to allow user to move chessboard 
         if(frame++ % board_dt == 0) 
         {
@@ -75,7 +77,7 @@ int main(int argc, char* argv[])
                     corner_count, 
                     found); 
 
-            cvShowImage(“Calibration”, image);
+            cvShowImage("Calibration", image);
 
             // If we got a good board, add it to our data 
             if( corner_count == board_n ) 
@@ -92,12 +94,12 @@ int main(int argc, char* argv[])
                 CV_MAT_ELEM(*point_counts, int,successes,0) = board_n; successes++;
             }
         } //end skip board_dt between chessboard capture
-        
+        int c = -1;
         //Handle pause/unpause and ESC int c = cvWaitKey(15);
-        if(c == ‘p’)
+        if(c == 'p')
         {
             c = 0;
-            while(c != ‘p’ && c != 27) c = cvWaitKey(250); 
+            while(c != 'p' && c != 27) c = cvWaitKey(250); 
         }
         if(c == 27) return 0;
 
@@ -152,12 +154,12 @@ int main(int argc, char* argv[])
             0); //CV_CALIB_FIX_ASPECT_RATIO
 
     // SAVE THE INTRINSICS AND DISTORTIONS 
-    cvSave(“Intrinsics.xml”,intrinsic_matrix); 
-    cvSave(“Distortion.xml”,distortion_coeffs);
+    cvSave("Intrinsics.xml",intrinsic_matrix); 
+    cvSave("Distortion.xml",distortion_coeffs);
 
     // EXAMPLE OF LOADING THESE MATRICES BACK IN:
-    CvMat *intrinsic = (CvMat*)cvLoad(“Intrinsics.xml”); 
-    CvMat *distortion = (CvMat*)cvLoad(“Distortion.xml”);
+    CvMat *intrinsic = (CvMat*)cvLoad("Intrinsics.xml"); 
+    CvMat *distortion = (CvMat*)cvLoad("Distortion.xml");
 
     // Build the undistort map that we will use for all
     // subsequent frames.
@@ -169,21 +171,21 @@ int main(int argc, char* argv[])
     // Just run the camera to the screen, now showing the raw and
     // the undistorted image.
     //
-    cvNamedWindow( “Undistort” ); 
+    cvNamedWindow( "Undistort" ); 
     while(image) 
     {
         IplImage *t = cvCloneImage(image);
-        cvShowImage( “Calibration”, image ); // Show raw image
+        cvShowImage( "Calibration", image ); // Show raw image
         cvRemap( t, image, mapx, mapy ); 
         cvReleaseImage(&t); 
-        cvShowImage(“Undistort”, image);
+        cvShowImage("Undistort", image);
 
         //Handle pause/unpause and ESC
         int c = cvWaitKey(15);
-        if(c == ‘p’) 
+        if(c == 'p') 
         {
             c = 0;
-            while(c != ‘p’ && c != 27) c = cvWaitKey(250); 
+            while(c != 'p' && c != 27) c = cvWaitKey(250); 
         }
         if(c == 27) break;
 
