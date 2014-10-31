@@ -17,62 +17,57 @@ int board_h;
 int board_w;
 
 void showImages(
-      IplImage *image,
-      IplImage* mapx,
-      IplImage* mapy,
-      CvCapture* capture);
+      Mat image,
+      Mat mapx,
+      Mat mapy,
+      VideoCapture capture);
 
 int findAllCorners(
-      IplImage *image,
+      Mat image,
       int board_n,
-      CvSize board_sz,
-      CvCapture* capture,
-      CvMat* image_points,
-      CvMat* object_points,
-      CvMat* point_counts);
+      Size board_sz,
+      VideoCapture capture,
+      vector<vector<Point2f> > image_points,
+      vector<vector<Point3f> > object_points);
 
 void findCornersOnBoard(
-      IplImage *image,
-      IplImage *gray_image,
-      CvSize board_sz,
-      CvPoint2D32f* corners,
+      Mat image,
+      Mat gray_image,
+      Size board_sz,
+      vector<Point2f> corners,
       int &successes,
-      int &corner_count,
       int board_n,
-      CvMat* image_points,
-      CvMat* object_points,
-      CvMat* point_counts);
+      vector<vector<Point2f> > image_points,
+      vector<vector<Point3f> > object_points);
 
 // ------------------------------------------ //
 
 void showImages(
-      IplImage *image,
-      IplImage* mapx,
-      IplImage* mapy,
-      CvCapture* capture)
+      Mat image,
+      Mat mapx,
+      Mat mapy,
+      VideoCapture capture)
 {
-	cvNamedWindow("Calibration");
-    cvNamedWindow("Undistort");
+   namedWindow("Calibration");
+   namedWindow("Undistort");
 	int c = 0;
-    while(image && c != 27)
-    {
-        IplImage *t = cvCloneImage(image);
-        cvShowImage("Calibration", image);
-        cvRemap(t, image, mapx, mapy);
-        cvReleaseImage(&t);
-        cvShowImage("Undistort", image);
-
-        //Handle pause/unpause
-        c = cvWaitKey(15);
-        if (c == 'p')
-        {
-            c = 0;
-            while (c != 'p' && c != 27)
-				c = cvWaitKey(250);
-        }
-
-        image = cvQueryFrame(capture);
-    }
+   while(!image.empty() && c != 27)
+   {
+      Mat t = image.clone();
+      cvShowImage("Calibration", image);
+      cvRemap(t, image, mapx, mapy);
+      cvReleaseImage(&t);
+      cvShowImage("Undistort", image);
+      //Handle pause/unpause
+      c = cvWaitKey(15);
+      if (c == 'p')
+      {
+         c = 0;
+         while (c != 'p' && c != 27)
+         c = cvWaitKey(250);
+      }
+      image = cvQueryFrame(capture);
+   }
 }
 
 void findCornersOnBoard(
