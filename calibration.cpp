@@ -1,25 +1,55 @@
-// calib.cpp
 // Calling convention:
-// calib board_w board_h number_of_views //
+// calibration board_w board_h number_of_views //
 // Hit 'p' to pause/unpause, ESC to quit //
+
 #include <opencv2/opencv.hpp>
-//#include <highgui.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+
+using namespace cv;
+using namespace std;
 
 int n_boards = 0; //Will be set by input list
 const int board_dt = 20; //Wait 20 frames per chessboard view int board_w;
 int board_h;
 int board_w;
 
-void showImages(IplImage *image, IplImage* mapx, IplImage* mapy, CvCapture* capture);
-int findCorners(IplImage *image, int board_n, CvSize board_sz, CvCapture* capture,
-				CvMat* image_points, CvMat* object_points, CvMat* point_counts);
-void findSingleCorner(IplImage *image, IplImage *gray_image, CvSize board_sz, CvPoint2D32f* corners,
-						int &successes, int &corner_count, int board_n,
-						CvMat* image_points, CvMat* object_points, CvMat* point_counts);
+void showImages(
+      IplImage *image,
+      IplImage* mapx,
+      IplImage* mapy,
+      CvCapture* capture);
 
-void showImages(IplImage *image, IplImage* mapx, IplImage* mapy, CvCapture* capture)
+int findAllCorners(
+      IplImage *image,
+      int board_n,
+      CvSize board_sz,
+      CvCapture* capture,
+      CvMat* image_points,
+      CvMat* object_points,
+      CvMat* point_counts);
+
+void findCornersOnBoard(
+      IplImage *image,
+      IplImage *gray_image,
+      CvSize board_sz,
+      CvPoint2D32f* corners,
+      int &successes,
+      int &corner_count,
+      int board_n,
+      CvMat* image_points,
+      CvMat* object_points,
+      CvMat* point_counts);
+
+// ------------------------------------------ //
+
+void showImages(
+      IplImage *image,
+      IplImage* mapx,
+      IplImage* mapy,
+      CvCapture* capture)
 {
 	cvNamedWindow("Calibration");
     cvNamedWindow("Undistort");
@@ -45,9 +75,17 @@ void showImages(IplImage *image, IplImage* mapx, IplImage* mapy, CvCapture* capt
     }
 }
 
-void findSingleCorner(IplImage *image, IplImage *gray_image, CvSize board_sz, CvPoint2D32f* corners,
-						int &successes, int &corner_count, int board_n,
-						CvMat* image_points, CvMat* object_points, CvMat* point_counts)
+void findCornersOnBoard(
+      IplImage *image,
+      IplImage *gray_image,
+      CvSize board_sz,
+      CvPoint2D32f* corners,
+      int &successes,
+      int &corner_count,
+      int board_n,
+      CvMat* image_points,
+      CvMat* object_points,
+      CvMat* point_counts)
 {
 	//Find chessboard corners:
     int found = cvFindChessboardCorners(
@@ -95,8 +133,14 @@ void findSingleCorner(IplImage *image, IplImage *gray_image, CvSize board_sz, Cv
     }
 }
 
-int findCorners(IplImage *image, int board_n, CvSize board_sz, CvCapture* capture,
-				CvMat* image_points, CvMat* object_points, CvMat* point_counts)
+int findAllCorners(
+      IplImage *image,
+      int board_n,
+      CvSize board_sz,
+      CvCapture* capture,
+      CvMat* image_points,
+      CvMat* object_points,
+      CvMat* point_counts)
 {
 	int corner_count;
 	CvPoint2D32f* corners = new CvPoint2D32f[board_n];
@@ -108,7 +152,7 @@ int findCorners(IplImage *image, int board_n, CvSize board_sz, CvCapture* captur
         if(frame++ % board_dt == 0)
         {
 			printf("%i", successes);
-			findSingleCorner(image, gray_image, board_sz, corners,
+			findCornersOnBoard(image, gray_image, board_sz, corners,
 							successes, corner_count, board_n,
 							image_points, object_points, point_counts);
         }
@@ -157,14 +201,14 @@ int main(int argc, char* argv[])
     // CAPTURE CORNER VIEWS LOOP UNTIL WE'VE GOT n_boards
     // SUCCESSFUL CAPTURES (ALL CORNERS ON THE BOARD ARE FOUND) //
 
-	int successes = findCorners(image, board_n, board_sz, capture, image_points, object_points, point_counts);
+	int successes = findAllCorners(image, board_n, board_sz, capture, image_points, object_points, point_counts);
 
     //ALLOCATE MATRICES ACCORDING TO HOW MANY CHESSBOARDS FOUND
     CvMat* object_points2 = cvCreateMat(successes*board_n,3,CV_32FC1);
     CvMat* image_points2 = cvCreateMat(successes*board_n,2,CV_32FC1);
     CvMat* point_counts2 = cvCreateMat(successes,1,CV_32SC1); //TRANSFER THE POINTS INTO THE CORRECT SIZE MATRICES
 
-    //Below, we write out the details in the next two loops. We could
+    //Below, we write out the details*board_n in the next two loops. We could
     //instead have written:
     //image_points->rows = object_points->rows = successes*board_n;
     //point_counts->rows = successes;
