@@ -2,17 +2,18 @@
 // calibration board_w board_h number_of_views //
 // Hit 'p' to pause/unpause, ESC to quit //
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 #include <iostream>
-#include <cstdio>
-#include <cstdlib>
 #include <vector>
 
 using namespace cv;
 using namespace std;
 
-int n_boards = 0; //Will be set by input list
 const int board_dt = 20; //Wait 20 frames per chessboard view int board_w;
+int n_boards;            //Will be set by input list
 int board_h;
 int board_w;
 
@@ -47,6 +48,27 @@ void showImages(
    Mat image;
    VideoCapture capture(0);
    capture >> image;
+   /*
+   Mat mapx(image.size(), CV_32FC1);
+   Mat mapy(image.size(), CV_32FC1);
+   Mat R;
+
+   Mat newCamMat = getOptimalNewCameraMatrix(
+                        intrinsic,
+                        distortion,
+                        image.size(),
+                        -1);
+
+   initUndistortRectifyMap(
+         intrinsic,
+         distortion,
+         R,
+         newCamMat,
+         image.size(),
+         CV_32FC1,
+         mapx,
+         mapy);
+   */
    namedWindow("Calibration");
    namedWindow("Undistort");
 	int c = 0;
@@ -54,9 +76,15 @@ void showImages(
    {
       Mat t = image.clone();
       imshow("Calibration", image);
+
+      // to powinno byc robione przez initUndistortRectifyMap + remap,
+      // zamiast undistort, ale nie mialem czasu przetestowac tego    <- Maciek
       undistort(t, image, intrinsic, distortion);
+
       imshow("Undistort", image);
+
       //Handle pause/unpause
+
       c = waitKey(15);
       if (c == 'p')
       {
@@ -131,6 +159,7 @@ int findAllCorners(
    vector<Point2f> corners;
 	Mat gray_image(image.size(), CV_8UC1);
 	int successes = 0, frame = 0;
+
 	while(successes < n_boards)
    {
       //Skip every board_dt frames to allow user to move chessboard
@@ -147,6 +176,7 @@ int findAllCorners(
                image_points,
                object_points);
       }
+
       //Handle pause/unpause and ESC int c = cvWaitKey(15);
       int c = -1;
       if(c == 'p')
@@ -156,9 +186,11 @@ int findAllCorners(
                c = waitKey(250);
       }
       capture >> image; //Get next image
-   } //END COLLECTION WHILE LOOP.
+   }
 	return successes;
 }
+
+// ------------------------------------------ //
 
 int main(int argc, char* argv[])
 {
@@ -175,18 +207,16 @@ int main(int argc, char* argv[])
    int board_n = board_w * board_h;
    Size board_sz = Size(board_w, board_h);
 
-   VideoCapture capture(0);
-
    vector<vector<Point2f> >  image_points(n_boards, vector<Point2f>(board_n));
    vector<vector<Point3f> > object_points(n_boards, vector<Point3f>(board_n));
    Mat intrinsic_matrix(3, 3, CV_32FC1);
    Mat distortion_coeffs(5, 1, CV_32FC1);
 
    Mat image;
+   VideoCapture capture(0);
    capture >> image;
 
    // CAPTURE CORNER VIEWS LOOP UNTIL WE'VE GOT n_boards //
-
 	int successes = findAllCorners(
                         image,
                         board_n,
@@ -194,17 +224,6 @@ int main(int argc, char* argv[])
                         capture,
                         image_points,
                         object_points);
-
-   //ALLOCATE MATRICES ACCORDING TO HOW MANY CHESSBOARDS FOUND
-   vector<vector<Point2f> >  image_points2(successes, vector<Point2f>(board_n));
-   vector<vector<Point3f> > object_points2(successes, vector<Point3f>(board_n));
-
-   for(int i = 0; i < successes; ++i)
-      for(int k = 0; k < board_n; k++)
-      {
-         image_points2[i][k]  = image_points[i][k];
-         object_points2[i][k] = object_points[i][k];
-      }
 
    // At this point we have all of the chessboard corners we need.
    // Initialize the intrinsic matrix such that the two focal
@@ -237,13 +256,6 @@ int main(int argc, char* argv[])
    fs_read["intr"] >> intrinsic;
    fs_read["dist"] >> distortion;
    fs_read.release();
-
-   // Build the undistort map that we will use for all
-   // subsequent frames.
-   //
-   //Mat mapx(image.size(), CV_32FC1);
-   //Mat mapy(image.size(), CV_32FC1);
-   //cvInitUndistortMap(intrinsic_matrix, distortion_coeffs, mapx, mapy);
 
    // Just run the camera to the screen, now showing the raw and
    // the undistorted image.
