@@ -160,7 +160,7 @@ int findAllCorners(
 	Mat gray_image(image.size(), CV_8UC1);
 	int successes = 0, frame = 0;
 
-	while(successes < n_boards)
+   while(successes < n_boards)
    {
       //Skip every board_dt frames to allow user to move chessboard
       if(frame++ % board_dt == 0)
