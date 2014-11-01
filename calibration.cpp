@@ -71,7 +71,7 @@ void showImages(
    */
    namedWindow("Calibration");
    namedWindow("Undistort");
-	int c = 0;
+   int c = 0;
    while(!image.empty() && c != 27)
    {
       Mat t = image.clone();
