@@ -106,7 +106,7 @@ void findCornersOnBoard(
       vector<vector<Point2f> > &image_points,
       vector<vector<Point3f> > &object_points)
 {
-	//Find chessboard corners:
+   //Find chessboard corners:
    bool found = findChessboardCorners(
                    image,
                    board_sz,
@@ -157,8 +157,8 @@ int findAllCorners(
       vector<vector<Point3f> > &object_points)
 {
    vector<Point2f> corners;
-	Mat gray_image(image.size(), CV_8UC1);
-	int successes = 0, frame = 0;
+   Mat gray_image(image.size(), CV_8UC1);
+   int successes = 0, frame = 0;
 
    while(successes < n_boards)
    {
@@ -166,7 +166,7 @@ int findAllCorners(
       if(frame++ % board_dt == 0)
       {
          cout << "Successes: " << successes << "\n";
-			findCornersOnBoard(
+         findCornersOnBoard(
                image,
                gray_image,
                board_sz,
@@ -187,7 +187,7 @@ int findAllCorners(
       }
       capture >> image; //Get next image
    }
-	return successes;
+   return successes;
 }
 
 // ------------------------------------------ //
@@ -217,7 +217,7 @@ int main(int argc, char* argv[])
    capture >> image;
 
    // CAPTURE CORNER VIEWS LOOP UNTIL WE'VE GOT n_boards //
-	int successes = findAllCorners(
+   int successes = findAllCorners(
                         image,
                         board_n,
                         board_sz,
