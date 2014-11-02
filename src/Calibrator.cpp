@@ -1,73 +1,44 @@
-/*
- * Calibrator.cpp
- *
- *  Created on: 31-10-2014
- *      Author: Bartosz Lagwa
- */
-
 #include "Calibrator.h"
+#define PAUSE_KEY 'p'
+#define ESCAPE_KEY 27
 
 Calibrator::Calibrator(int imagesNumber, size_t imageWidth, size_t imageHeight) noexcept
 {
 }
 
-void Calibrator::showSingleImage(Mat image, Mat intrinsic, Mat distortion)
+void Calibrator::showSingleImage(const Mat &image, const Mat &intrinsic, const Mat &distortion)
 {
-		Mat t = image.clone();
-		imshow("Calibration", image);
-
-		// to powinno byc robione przez initUndistortRectifyMap + remap,
-		// zamiast undistort, ale nie mialem czasu przetestowac tego	 <- Maciek
-		undistort(t, image, intrinsic, distortion);
-
-		imshow("Undistort", image);
+	Mat t = image.clone();
+	imshow("Calibration", image);
+	undistort(image, t, intrinsic, distortion);
+	imshow("Undistort", t);
 }
 
-void Calibrator::handlePause(int &c)
+int Calibrator::handlePause()
 {
-	c = waitKey(15);
-	if (c == 'p')
+	int c = waitKey(15);
+	if (c == PAUSE_KEY)
 	{
 		c = 0;
-		while (c != 'p' && c != 27)
+		while (c != PAUSE_KEY && c != ESCAPE_KEY)
 			c = waitKey(250);
 	}
+	return c;
 }
 
-void Calibrator::showImages(Mat intrinsic, Mat distortion)
+void Calibrator::showImages(const Mat intrinsic, const Mat distortion)
 {
 	Mat image;
-	VideoCapture capture(0);
-	capture >> image;
-	/*
-	Mat mapx(image.size(), CV_32FC1);
-	Mat mapy(image.size(), CV_32FC1);
-	Mat R;
-
-	Mat newCamMat = getOptimalNewCameraMatrix(
-								intrinsic,
-								distortion,
-								image.size(),
-								-1);
-
-	initUndistortRectifyMap(
-			intrinsic,
-			distortion,
-			R,
-			newCamMat,
-			image.size(),
-			CV_32FC1,
-			mapx,
-			mapy);
-	*/
+	_capture = VideoCapture(0);
+	image = getNextImage();
 	namedWindow("Calibration");
 	namedWindow("Undistort");
 	int c = 0;
-	while(!image.empty() && c != 27)
+	while(!image.empty() && c != ESCAPE_KEY)
 	{
 		this->showSingleImage(image, intrinsic, distortion);
-		this->handlePause(c);
-		capture >> image;
+		c = this->handlePause();
+		image = getNextImage();
 	}
 }
 

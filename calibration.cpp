@@ -1,19 +1,15 @@
-// Calling convention:
-// calibration board_w board_h number_of_views //
-// Hit 'p' to pause/unpause, ESC to quit //
-
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <iostream>
 #include <vector>
-#include "source\Calibrator.h"
+#include "src/Calibrator.h"
 
 using namespace cv;
 using namespace std;
 
-const int board_dt = 20;    //Wait 20 frames per chessboard view int board_w;
-int n_boards;               //Will be set by input list
+const int board_dt = 20;
+int n_boards;
 int board_h;
 int board_w;
 
@@ -35,10 +31,6 @@ void findCornersOnBoard(
         vector<vector<Point2f> > &image_points,
         vector<vector<Point3f> > &object_points);
 
-// ------------------------------------------ //
-
-
-
 void findCornersOnBoard(
         Mat image,
         Mat gray_image,
@@ -49,7 +41,6 @@ void findCornersOnBoard(
         vector<vector<Point2f> > &image_points,
         vector<vector<Point3f> > &object_points)
 {
-    //Find chessboard corners:
     bool found = findChessboardCorners(
                     image,
                     board_sz,
@@ -58,7 +49,6 @@ void findCornersOnBoard(
 
     if (found)
     {
-        //Get Subpixel accuracy on those corners
         cvtColor(image, gray_image, CV_BGR2GRAY);
         cornerSubPix(
             gray_image,
@@ -67,7 +57,6 @@ void findCornersOnBoard(
             Size(-1,-1),
             TermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1));
 
-        //Draw it
         drawChessboardCorners(
             image,
             board_sz,
@@ -77,7 +66,6 @@ void findCornersOnBoard(
     imshow("Calibration", image);
     waitKey(33);
 
-    // If we got a good board, add it to our data
     if (corners.size() == board_n)
     {
         for(int j = 0; j < board_n; ++j)
@@ -105,7 +93,6 @@ int findAllCorners(
 
     while(successes < n_boards)
     {
-        //Skip every board_dt frames to allow user to move chessboard
         if(frame++ % board_dt == 0)
         {
             cout << "Successes: " << successes << "\n";
@@ -120,7 +107,6 @@ int findAllCorners(
                     object_points);
         }
 
-        //Handle pause/unpause and ESC int c = cvWaitKey(15);
         int c = -1;
         if(c == 'p')
         {
@@ -128,12 +114,10 @@ int findAllCorners(
             while(c != 'p' && c != 27)
                 c = waitKey(250);
         }
-        capture >> image; //Get next image
+        capture >> image;
     }
     return successes;
 }
-
-// ------------------------------------------ //
 
 int main(int argc, char* argv[])
 {
@@ -153,14 +137,13 @@ int main(int argc, char* argv[])
 
     vector<vector<Point2f> >  image_points(n_boards, vector<Point2f>(board_n));
     vector<vector<Point3f> > object_points(n_boards, vector<Point3f>(board_n));
-    Mat intrinsic_matrix(3, 3, CV_32FC1);
-    Mat distortion_coeffs(5, 1, CV_32FC1);
+    Mat intrinsicMatrix(3, 3, CV_32FC1);
+    Mat distortionCoeffs(5, 1, CV_32FC1);
 
     Mat image;
     VideoCapture capture(0);
     capture >> image;
 
-    // CAPTURE CORNER VIEWS LOOP UNTIL WE'VE GOT n_boards //
     int successes = findAllCorners(
                         image,
                         board_n,
@@ -169,41 +152,26 @@ int main(int argc, char* argv[])
                         image_points,
                         object_points);
 
-    // At this point we have all of the chessboard corners we need.
-    // Initialize the intrinsic matrix such that the two focal
-    // lengths have a ratio of 1.0
-
-    intrinsic_matrix.at<float>(0,0) = 1.0f;
-    intrinsic_matrix.at<float>(1,1) = 1.0f;
+    intrinsicMatrix.at<float>(0,0) = 1.0f;
+    intrinsicMatrix.at<float>(1,1) = 1.0f;
 
     vector<Mat> rot;
     vector<Mat> trans;
 
-    //CALIBRATE THE CAMERA!
     calibrateCamera(
             object_points,
             image_points,
             image.size(),
-            intrinsic_matrix,
-            distortion_coeffs,
+            intrinsicMatrix,
+            distortionCoeffs,
             rot,
             trans);
 
-    // SAVE THE INTRINSICS AND DISTORTIONS
     FileStorage fs_write("Calibration_params.xml", FileStorage::WRITE);
-    fs_write << "intr" << intrinsic_matrix << "dist" << distortion_coeffs;
+    fs_write << "intr" << intrinsicMatrix << "dist" << distortionCoeffs;
     fs_write.release();
 
-    // EXAMPLE OF LOADING THESE MATRICES BACK IN:
-    Mat intrinsic, distortion;
-    FileStorage fs_read("Calibration_params.xml", FileStorage::READ);
-    fs_read["intr"] >> intrinsic;
-    fs_read["dist"] >> distortion;
-    fs_read.release();
-
-    // Just run the camera to the screen, now showing the raw and
-    // the undistorted image.
-    calibrator.showImages(intrinsic, distortion);
+    calibrator.showImages(intrinsicMatrix, distortionCoeffs);
 
     return 0;
 }
