@@ -1,8 +1,5 @@
 #include "Calibrator.h"
 
-#define PAUSE_KEY 'p'
-#define ESCAPE_KEY 27
-
 Calibrator::Calibrator(int imagesAmount, int boardWidth, int boardHeight) noexcept
 	: _imagesAmount(imagesAmount),
 	  _boardWidth(boardWidth),
@@ -18,8 +15,8 @@ void Calibrator::execute() noexcept
 
 	vector<vector<Point2f> >  image_points(_imagesAmount, vector<Point2f>(pointsOnBoardAmount));
 	vector<vector<Point3f> > object_points(_imagesAmount, vector<Point3f>(pointsOnBoardAmount));
-	Mat intrinsicMatrix(3, 3, CV_32FC1);
-	Mat distortionCoeffs(5, 1, CV_32FC1);
+	Mat _intrinsic(3, 3, CV_32FC1);
+	Mat _distortion(5, 1, CV_32FC1);
 
 	Mat image;
 	image = getNextImage();
@@ -32,8 +29,8 @@ void Calibrator::execute() noexcept
 						image_points,
 						object_points);
 
-	intrinsicMatrix.at<float>(0,0) = 1.0f;
-	intrinsicMatrix.at<float>(1,1) = 1.0f;
+	_intrinsic.at<float>(0,0) = 1.0f;
+	_intrinsic.at<float>(1,1) = 1.0f;
 
 	vector<Mat> rot;
 	vector<Mat> trans;
@@ -42,59 +39,80 @@ void Calibrator::execute() noexcept
 			object_points,
 			image_points,
 			image.size(),
-			intrinsicMatrix,
-			distortionCoeffs,
+			_intrinsic,
+			_distortion,
 			rot,
 			trans);
 
-	saveIntrinsicMatrixWithYmlExtension("intrinsic_matrix.yml", intrinsicMatrix);
-	saveDistortionCoeffsWithYmlExtension("distortion_coeffs.yml", distortionCoeffs);
+	saveIntrinsicMatrixWithYmlExtension("intrinsic_matrix.yml");
+	saveDistortionCoeffsWithYmlExtension("distortion_coeffs.yml");
 
-	showImages(intrinsicMatrix, distortionCoeffs);
+	presentImagesWithTheirsUndistortedCopy();
 }
 
-void Calibrator::showSingleImage(const Mat &image, const Mat &intrinsic, const Mat &distortion)
+void Calibrator::showImages(const std::initializer_list
+                                <std::pair<const std::string&, const Mat&>> 
+                                &imagesWithWindowsNames) const noexcept
 {
-	Mat t = image.clone();
-	imshow("Calibration", image);
-	undistort(image, t, intrinsic, distortion);
-	imshow("Undistort", t);
+    for(auto image : imagesWithWindowsNames)
+	    imshow(image.first.c_str(), image.second);
 }
 
-int Calibrator::handlePause()
+int Calibrator::handlePause() const noexcept
 {
-	int c = waitKey(15);
-	if (c == PAUSE_KEY)
+	int pressedKey = 0;
+
+    if(waitKey(WAITING_TIME) == PAUSE_KEY)
+	    while(pressedKey != PAUSE_KEY && pressedKey != ESCAPE_KEY)
+		    pressedKey = waitKey(WAITING_TIME);
+	return pressedKey;
+}
+
+void Calibrator::presentImagesWithTheirsUndistortedCopy()
+{
+    int pressedKey = 0;
+
+    createWindows({CALIBRATION_WINDOW_NAME, UNDISTORTED_WINDOW_NAME});
+    _image = getNextImage();
+	while(!_image.empty() && pressedKey != ESCAPE_KEY)
 	{
-		c = 0;
-		while (c != PAUSE_KEY && c != ESCAPE_KEY)
-			c = waitKey(250);
+        showImageAndItsUndistortedCopy();
+		pressedKey = this->handlePause();
+        _image = getNextImage();
 	}
-	return c;
 }
 
-void Calibrator::showImages(const Mat intrinsic, const Mat distortion)
+void Calibrator::showImageAndItsUndistortedCopy() 
+    const noexcept
 {
-	Mat image;
-	image = getNextImage();
-	namedWindow("Calibration");
-	namedWindow("Undistort");
-	int c = 0;
-	while(!image.empty() && c != ESCAPE_KEY)
-	{
-		this->showSingleImage(image, intrinsic, distortion);
-		c = this->handlePause();
-		image = getNextImage();
-	}
+    Mat undistortedImage = createUndistortedImage(_image);
+
+    showImages({{CALIBRATION_WINDOW_NAME, _image}, 
+                {UNDISTORTED_WINDOW_NAME, undistortedImage}});
+}
+
+Mat Calibrator::createUndistortedImage(const Mat &image) const noexcept
+{
+    Mat undistortedImage = image.clone();
+
+    undistort(image, undistortedImage, _intrinsic, _distortion);
+    return undistortedImage;
+}
+
+void Calibrator::createWindows(const std::initializer_list
+                                  <const std::string> &names) 
+    const noexcept
+{
+    for(auto name : names)
+        namedWindow(name.c_str());
 }
 
 Mat& Calibrator::getNextImage() throw (ImageReadError)
 {
 	Mat* image = new Mat();
-	if ( !_capture.read(*image) )
-	{
+
+	if(!_capture.read(*image))
 		throw ImageReadError();
-	}
 	return *image;
 }
 
@@ -103,21 +121,17 @@ void Calibrator::reinitCaptureFieldWithImagesPath(const string path) noexcept
 	_capture = VideoCapture(path);
 }
 
-void Calibrator::saveIntrinsicMatrixWithYmlExtension(
-		const string path,
-		const Mat& intrinsicMatrix) const noexcept
+void Calibrator::saveIntrinsicMatrixWithYmlExtension(const string path) const noexcept
 {
 	FileStorage fileStorage(path, FileStorage::WRITE);
-	fileStorage << "Intrinsic Matrix" << intrinsicMatrix;
+	fileStorage << "Intrinsic Matrix" << _intrinsic;
 	fileStorage.release();
 }
 
-void Calibrator::saveDistortionCoeffsWithYmlExtension(
-		const string path,
-		const Mat& distortionCoeffs) const noexcept
+void Calibrator::saveDistortionCoeffsWithYmlExtension(const string path) const noexcept
 {
 	FileStorage fileStorage(path, FileStorage::WRITE);
-	fileStorage << "Distortion Coefficients" << distortionCoeffs;
+	fileStorage << "Distortion Coefficients" << _distortion;
 	fileStorage.release();
 }
 
