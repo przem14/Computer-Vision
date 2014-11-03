@@ -33,23 +33,29 @@ private:
 		const noexcept;
 	void showSingleImage(const Mat &image, const Mat &intrinsic, const Mat &distortion);
 	int handlePause();
-
+	void Calibrator::showChessboardPoints(const Mat &image, const Size &boardSize, 
+				const vector<Point2f> &corners, const bool &found);
 	int findAllCorners(
 	        Mat image,
-	        int board_n,
-	        Size board_sz,
-	        VideoCapture capture,
-	        vector<vector<Point2f> > &image_points,
-	        vector<vector<Point3f> > &object_points);
-	void findCornersOnBoard(
-	        Mat image,
-	        Mat gray_image,
-	        Size board_sz,
-	        vector<Point2f> corners,
-	        int &successes,
-	        int board_n,
-	        vector<vector<Point2f> > &image_points,
-	        vector<vector<Point3f> > &object_points);
+	        const int &pointsOnBoardAmount,
+	        const Size &boardSize,
+	        vector<vector<Point2f> > &imagePoints,
+	        vector<vector<Point3f> > &objectPoints);
+	bool findCornersOnChessboard(const Mat &image, const Size &boardSize, vector<Point2f> &corners);
+	void Calibrator::getSubpixelAccuracy(const Mat &image, Mat &grayImage, vector<Point2f> &corners);
+	void Calibrator::SaveImagePoints(const int &successes, const int &pointsOnBoardAmount, const vector<Point2f> &corners,
+	vector<vector<Point2f> > &imagePoints, vector<vector<Point3f> > &objectPoints);
+	Mat Calibrator::CreateGrayImage(const Mat &image);
+	void Calibrator::DisplayNumberOfSuccesses(const int &successes);
+	void Calibrator::findCornersOnImage(
+        const Mat &image,
+        Mat &grayImage,
+        const Size &boardSize,
+        vector<Point2f> &corners,
+        int &successes,
+        const int &pointsOnBoardAmount,
+        vector<vector<Point2f> > &imagePoints,
+        vector<vector<Point3f> > &objectPoints);
 
 	int _imagesAmount;
 	int _boardWidth;
