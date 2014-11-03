@@ -13,21 +13,19 @@ void Calibrator::execute() noexcept
 	int pointsOnBoardAmount = _boardWidth * _boardHeight;
 	Size boardSize = Size(_boardWidth, _boardHeight);
 
-	vector<vector<Point2f> >  image_points(_imagesAmount, vector<Point2f>(pointsOnBoardAmount));
-	vector<vector<Point3f> > object_points(_imagesAmount, vector<Point3f>(pointsOnBoardAmount));
+	vector<vector<Point2f> >  imagePoints(_imagesAmount, vector<Point2f>(pointsOnBoardAmount));
+	vector<vector<Point3f> > objectPoints(_imagesAmount, vector<Point3f>(pointsOnBoardAmount));
 	Mat _intrinsic(3, 3, CV_32FC1);
 	Mat _distortion(5, 1, CV_32FC1);
 
 	Mat image;
 	image = getNextImage();
 
-	int successes = findAllCorners(
-						image,
-						pointsOnBoardAmount,
-						boardSize,
-						_capture,
-						image_points,
-						object_points);
+	findAllCorners(image,
+			       pointsOnBoardAmount,
+				   boardSize,
+                   imagePoints,
+                   objectPoints);
 
 	_intrinsic.at<float>(0,0) = 1.0f;
 	_intrinsic.at<float>(1,1) = 1.0f;
@@ -36,8 +34,8 @@ void Calibrator::execute() noexcept
 	vector<Mat> trans;
 
 	calibrateCamera(
-			object_points,
-			image_points,
+			objectPoints,
+			imagePoints,
 			image.size(),
 			_intrinsic,
 			_distortion,
@@ -135,90 +133,102 @@ void Calibrator::saveDistortionCoeffsWithYmlExtension(const string path) const n
 	fileStorage.release();
 }
 
-void Calibrator::findCornersOnBoard(
-        Mat image,
-        Mat gray_image,
-        Size board_sz,
-        vector<Point2f> corners,
-        int &successes,
-        int board_n,
-        vector<vector<Point2f> > &image_points,
-        vector<vector<Point3f> > &object_points)
+void Calibrator::showChessboardPoints(const Mat &image, const Size &boardSize, 
+				const vector<Point2f> &corners, const bool &found)
 {
-    bool found = findChessboardCorners(
-                    image,
-                    board_sz,
-                    corners,
-                    CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_FILTER_QUADS);
+	drawChessboardCorners(image, boardSize, corners, found);
+	imshow("Calibration", image);
+	waitKey(33);
+}
 
-    if (found)
-    {
-        cvtColor(image, gray_image, CV_BGR2GRAY);
-        cornerSubPix(
-            gray_image,
-            corners,
-            Size(11,11),
-            Size(-1,-1),
-            TermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1));
+bool Calibrator::findCornersOnChessboard(const Mat &image, const Size &boardSize, vector<Point2f> &corners)
+{
+	return findChessboardCorners(image, boardSize, corners,
+			CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_FILTER_QUADS);
+}
 
-        drawChessboardCorners(
-            image,
-            board_sz,
-            corners,
-            found);
-    }
-    imshow("Calibration", image);
-    waitKey(33);
+void Calibrator::getSubpixelAccuracy(const Mat &image, Mat &grayImage, vector<Point2f> &corners)
+{
+	cvtColor(image, grayImage, CV_BGR2GRAY);
+	cornerSubPix(
+			grayImage,
+			corners,
+			Size(11,11),
+			Size(-1,-1),
+			TermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1));
+}
 
-    if (corners.size() == board_n)
-    {
-        for(int j = 0; j < board_n; ++j)
-        {
-            image_points[successes][j]    = corners[j];
-            object_points[successes][j].x = j / _boardWidth;
-            object_points[successes][j].y = j % _boardWidth;
-            object_points[successes][j].z = 0.0f;
-        }
-        successes++;
-    }
+void Calibrator::SaveImagePoints(const int &successes, const int &pointsOnBoardAmount, const vector<Point2f> &corners,
+		vector<vector<Point2f> > &imagePoints, vector<vector<Point3f> > &objectPoints)
+{
+	for(int j=0; j<pointsOnBoardAmount; j++)
+	{
+		imagePoints[successes][j]	= corners[j];
+		objectPoints[successes][j].x = j / _boardWidth;
+		objectPoints[successes][j].y = j % _boardWidth;
+		objectPoints[successes][j].z = 0.0f;
+	}
+}
+
+void Calibrator::findCornersOnImage(
+		const Mat &image,
+		Mat &grayImage,
+		const Size &boardSize,
+		vector<Point2f> &corners,
+		int &successes,
+		const int &pointsOnBoardAmount,
+		vector<vector<Point2f> > &imagePoints,
+		vector<vector<Point3f> > &objectPoints)
+{
+	bool found = this->findCornersOnChessboard(image, boardSize, corners);
+	if (found)
+		this->getSubpixelAccuracy(image, grayImage, corners);
+	this->showChessboardPoints(image, boardSize, corners, found);
+	if (corners.size() == pointsOnBoardAmount)
+	{
+		this->SaveImagePoints(successes, pointsOnBoardAmount, corners, imagePoints, objectPoints);
+		successes++;
+	}
+}
+
+Mat Calibrator::CreateGrayImage(const Mat &image)
+{
+	return Mat(image.size(), CV_8UC1);
+}
+
+void Calibrator::DisplayNumberOfSuccesses(const int &successes)
+{
+	cout << "Successes: " << successes << "\n";
 }
 
 int Calibrator::findAllCorners(
-        Mat image,
-        int board_n,
-        Size board_sz,
-        VideoCapture capture,
-        vector<vector<Point2f> > &image_points,
-        vector<vector<Point3f> > &object_points)
+		Mat image,
+		const int &pointsOnBoardAmount,
+		const Size &boardSize,
+		vector<vector<Point2f> > &imagePoints,
+		vector<vector<Point3f> > &objectPoints)
 {
-    vector<Point2f> corners;
-    Mat gray_image(image.size(), CV_8UC1);
-    int successes = 0, frame = 0;
+	vector<Point2f> corners;
+	Mat grayImage = this->CreateGrayImage(image);
+	int successes = 0, frame = 0;
+	while(successes < _imagesAmount)
+	{
+		if(frame++ % board_dt == 0)
+		{
+			this->DisplayNumberOfSuccesses(successes);
+			this->findCornersOnImage(
+					image,
+					grayImage,
+					boardSize,
+					corners,
+					successes,
+					pointsOnBoardAmount,
+					imagePoints,
+					objectPoints);
+		}
 
-    while(successes < _imagesAmount)
-    {
-        if(frame++ % board_dt == 0)
-        {
-            cout << "Successes: " << successes << "\n";
-            findCornersOnBoard(
-                    image,
-                    gray_image,
-                    board_sz,
-                    corners,
-                    successes,
-                    board_n,
-                    image_points,
-                    object_points);
-        }
-
-        int c = -1;
-        if(c == 'p')
-        {
-            c = 0;
-            while(c != 'p' && c != 27)
-                c = waitKey(250);
-        }
-        capture >> image;
-    }
-    return successes;
+		this->handlePause();
+		image = getNextImage();
+	}
+	return successes;
 }
