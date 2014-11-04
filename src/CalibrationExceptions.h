@@ -11,7 +11,10 @@
 
 class ImageReadError : public std::exception
 {
-    virtual const char* what() const noexcept {return "Nie udalo sie wczytac obrazu";};
+    virtual const char* what() const noexcept 
+    {
+        return "Nie udalo sie wczytac obrazu";
+    }
 };
 
 #endif /* CALIBRATIONEXCEPTIONS_H_ */
