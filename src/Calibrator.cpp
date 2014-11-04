@@ -55,17 +55,17 @@ void Calibrator::showImages(const std::initializer_list
                                 &imagesWithWindowsNames) const noexcept
 {
     for(auto image : imagesWithWindowsNames)
-	    cv::imshow(image.first.c_str(), image.second);
+         cv::imshow(image.first.c_str(), image.second);
 }
 
 int Calibrator::handlePause() const noexcept
 {
-	int pressedKey = 0;
+    int pressedKey = 0;
 
     if(cv::waitKey(WAITING_TIME) == PAUSE_KEY)
-	    while(pressedKey != PAUSE_KEY && pressedKey != ESCAPE_KEY)
-		    pressedKey = cv::waitKey(WAITING_TIME);
-	return pressedKey;
+        while(pressedKey != PAUSE_KEY && pressedKey != ESCAPE_KEY)
+            pressedKey = cv::waitKey(WAITING_TIME);
+    return pressedKey;
 }
 
 void Calibrator::presentImagesWithTheirsUndistortedCopy()
@@ -74,12 +74,12 @@ void Calibrator::presentImagesWithTheirsUndistortedCopy()
 
     createWindows({CALIBRATION_WINDOW_NAME, UNDISTORTED_WINDOW_NAME});
     _image = getNextImage();
-	while(!_image.empty() && pressedKey != ESCAPE_KEY)
-	{
+    while(!_image.empty() && pressedKey != ESCAPE_KEY)
+    {
         showImageAndItsUndistortedCopy();
-		pressedKey = this->handlePause();
+        pressedKey = this->handlePause();
         _image = getNextImage();
-	}
+    }
 }
 
 void Calibrator::showImageAndItsUndistortedCopy() 
