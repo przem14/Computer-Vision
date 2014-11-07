@@ -11,8 +11,11 @@
 #include <vector>
 #include <utility>
 #include <initializer_list>
+#include <memory>
 
 using std::vector;
+
+using MatSharedPtr = std::shared_ptr<cv::Mat>;
 
 class Calibrator
 {
@@ -22,7 +25,7 @@ public:
     void execute() noexcept;
 
 private:
-    cv::Mat& getNextImage() throw (ImageReadError);
+    MatSharedPtr getNextImage() throw (ImageReadError);
     void reinitCaptureFieldWithImagesPath(const std::string &path) noexcept;
 
     void saveIntrinsicMatrixWithYmlExtension(const std::string &path)
@@ -34,41 +37,36 @@ private:
 
     void showImageAndItsUndistortedCopy() const noexcept;
     void showImages(const std::initializer_list 
-                        <std::pair<const std::string&, const cv::Mat&>> 
+                        <std::pair<const std::string&, const MatSharedPtr>>
                         &imagesWithWindowsNames) const noexcept;
 
-    cv::Mat createUndistortedImage(const cv::Mat &image) const noexcept;
+    MatSharedPtr createUndistortedImage() const noexcept;
 
     void createWindows(const std::initializer_list<const std::string> &names) 
         const noexcept;
 
     int handlePause() const noexcept;
 
-    void showChessboardPoints(const cv::Mat &image,
-                              const cv::Size &boardSize,
+    void showChessboardPoints(const cv::Size &boardSize,
                               const vector<cv::Point2f> &corners,
                               const bool &found);
 
-    int findAllCorners(cv::Mat image,
-                       const int &pointsOnBoardAmount,
+    int findAllCorners(const int &pointsOnBoardAmount,
                        const cv::Size &boardSize,
                        vector<vector<cv::Point2f> > &imagePoints,
                        vector<vector<cv::Point3f> > &objectPoints);
-    bool findCornersOnChessboard(const cv::Mat &image, 
-                                 const cv::Size &boardSize, 
+    bool findCornersOnChessboard(const cv::Size &boardSize,
                                  vector<cv::Point2f> &corners);
-    void getSubpixelAccuracy(const cv::Mat &image, 
-                             cv::Mat &grayImage, 
+    void getSubpixelAccuracy(MatSharedPtr grayImage,
                              vector<cv::Point2f> &corners);
     void saveImagePoints(const int &successes, 
-                         const int &pointsOnBoardAmount, 
+                         const int &pointsOnBoardAmount,
                          const vector<cv::Point2f> &corners,
                          vector<vector<cv::Point2f>> &imagePoints, 
                          vector<vector<cv::Point3f>> &objectPoints);
-    cv::Mat createGrayImage(const cv::Mat &image);
+    MatSharedPtr createGrayImage();
     void displayNumberOfSuccesses(const int &successes);
-    void findCornersOnImage(const cv::Mat &image,
-                            cv::Mat &grayImage,
+    void findCornersOnImage(MatSharedPtr grayImage,
                             const cv::Size &boardSize,
                             vector<cv::Point2f> &corners,
                             int &successes,
@@ -81,21 +79,25 @@ private:
     int _imagesAmount;
     int _boardWidth;
     int _boardHeight;
-    cv::VideoCapture _capture;
+    cv::VideoCapture _capture = cv::VideoCapture(0);
 
-    cv::Mat _image;
+    MatSharedPtr _image = nullptr;
 
-    cv::Mat _intrinsic;
-    cv::Mat _distortion;
+    cv::Mat _intrinsic = cv::Mat(3, 3, CV_32FC1);
+    cv::Mat _distortion = cv::Mat(5, 1, CV_32FC1);
 
     const std::string CALIBRATION_WINDOW_NAME = "Calibration";
     const std::string UNDISTORTED_WINDOW_NAME = "Undistort";
+    const std::string INTRINSIC_MATRIX_OUTPUT_FILE = "intrinsic_matrix.yml";
+    const std::string DISTORTION_COEFFS_OUTPUT_FILE = "distortion_coeffs.yml";
+    const std::string INTRINSIC_MATRIX_TITLE = "Intrinsic Matrix";
+    const std::string DISTORTION_COEFFS_TITLE = "Distortion Coefficients";
 
     const char PAUSE_KEY    = 'p';
     const char ESCAPE_KEY   = 27;
     const int  WAITING_TIME = 250;
 
-    const int board_dt = 20;
+    const int BOARD_DT = 20;
 };
 
 
