@@ -2,11 +2,11 @@
 
 #include <iostream>
 
-bool isNumberOfInuptParametersCorrect(const int numberOfParameters);
+bool isNumberOfInputParametersCorrect(const int numberOfParameters);
 
 int main(int argc, char* argv[])
 {
-    if(isNumberOfInuptParametersCorrect(argc))
+    if(!isNumberOfInputParametersCorrect(argc))
     {
         std::cerr << "ERROR: Wrong number of input parameters" << std::endl;
         return -1;
@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-bool isNumberOfInuptParametersCorrect(const int numberOfParameters)
+bool isNumberOfInputParametersCorrect(const int numberOfParameters)
 {
     const int CORRECT_NUMBER_OF_PARAMETERS = 4;
 
