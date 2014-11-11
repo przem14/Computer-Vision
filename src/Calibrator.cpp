@@ -54,13 +54,13 @@ void Calibrator::showImages(
          cv::imshow(image.first.c_str(), *image.second);
 }
 
-int Calibrator::handlePause() const noexcept
+int Calibrator::handlePause(const int time) const noexcept
 {
     int pressedKey = 0;
 
-    if(cv::waitKey(WAITING_TIME) == PAUSE_KEY)
+    if(cv::waitKey(time) == PAUSE_KEY)
         while(pressedKey != PAUSE_KEY && pressedKey != ESCAPE_KEY)
-            pressedKey = cv::waitKey(WAITING_TIME);
+            pressedKey = cv::waitKey(time);
     return pressedKey;
 }
 
@@ -73,7 +73,7 @@ void Calibrator::presentImagesWithTheirsUndistortedCopy()
     while(!_image -> empty() && pressedKey != ESCAPE_KEY)
     {
         showImageAndItsUndistortedCopy();
-        pressedKey = this->handlePause();
+        pressedKey = this->handlePause(WAITING_TIME);
         _image = getNextImage();
     }
 }
@@ -140,7 +140,6 @@ void Calibrator::showChessboardPoints(const cv::Size &boardSize,
 {
     drawChessboardCorners(*_image, boardSize, corners, found);
     cv::imshow(CALIBRATION_WINDOW_NAME, *_image);
-    cv::waitKey(33);
 }
 
 bool Calibrator::findCornersOnChessboard(const cv::Size &boardSize,
@@ -191,6 +190,7 @@ void Calibrator::findCornersOnImage(MatSharedPtr grayImage,
 
     if(found) this->getSubpixelAccuracy(grayImage, corners);
     this->showChessboardPoints(boardSize, corners, found);
+    this->handlePause(SHOWING_TIME);
     if(corners.size() == pointsOnBoardAmount)
     {
         this->saveImagePoints(successes, 
@@ -235,7 +235,7 @@ int Calibrator::findAllCorners(const int &pointsOnBoardAmount,
                                      objectPoints);
         }
 
-        this->handlePause();
+        this->handlePause(WAITING_TIME);
         _image = getNextImage();
     }
     return successes;
