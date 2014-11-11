@@ -23,7 +23,7 @@ public:
                         &imagesWithWindowsNames) const noexcept;
 
     void createWindows(const std::initializer_list<const std::string> &names)
-        const noexcept;
+        noexcept;
 
     vector<std::string> listOfOpenedWindows() const noexcept;
 

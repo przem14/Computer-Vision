@@ -14,7 +14,7 @@ void DisplayManager::showImages(
 }
 
 void DisplayManager::createWindows(const std::initializer_list
-                                  <const std::string> &names) const noexcept
+                                  <const std::string> &names) noexcept
 {
     for(auto name : names)
         if (isOpened(name))
