@@ -42,7 +42,10 @@ private:
 
     MatSharedPtr createUndistortedImage() const noexcept;
 
-    int handlePause() const noexcept;
+    void createWindows(const std::initializer_list<const std::string> &names)
+        const noexcept;
+
+    int handlePause(const int time) const noexcept;
 
     void showChessboardPoints(const cv::Size &boardSize,
                               const vector<cv::Point2f> &corners,
@@ -93,6 +96,7 @@ private:
     const char PAUSE_KEY    = 'p';
     const char ESCAPE_KEY   = 27;
     const int  WAITING_TIME = 250;
+    const int  SHOWING_TIME = 30;
 
     const int BOARD_DT = 20;
 };
