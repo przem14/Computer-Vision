@@ -1,6 +1,8 @@
 #include "Calibrator.h"
 
-Calibrator::Calibrator(int imagesAmount, int boardWidth, int boardHeight) 
+DisplayManager Calibrator::_displayManager = DisplayManager();
+
+Calibrator::Calibrator(int imagesAmount, int boardWidth, int boardHeight)
     noexcept
     : _imagesAmount(imagesAmount),
       _boardWidth(boardWidth),
@@ -13,13 +15,15 @@ void Calibrator::execute() noexcept
     int pointsOnBoardAmount = _boardWidth * _boardHeight;
     cv::Size boardSize = cv::Size(_boardWidth, _boardHeight);
 
-    vector<vector<cv::Point2f>> 
+    vector<vector<cv::Point2f>>
         imagePoints(_imagesAmount, vector<cv::Point2f>(pointsOnBoardAmount));
     vector<vector<cv::Point3f>>
         objectPoints(_imagesAmount, vector<cv::Point3f>(pointsOnBoardAmount));
 
     _image = getNextImage();
 
+    _displayManager.createWindows(
+        {CALIBRATION_WINDOW_NAME, UNDISTORTED_WINDOW_NAME});
     findAllCorners(pointsOnBoardAmount,
                    boardSize,
                    imagePoints,
@@ -43,24 +47,19 @@ void Calibrator::execute() noexcept
     saveDistortionCoeffsWithYmlExtension(DISTORTION_COEFFS_OUTPUT_FILE);
 
     presentImagesWithTheirsUndistortedCopy();
-}
-
-void Calibrator::showImages(
-        const std::initializer_list
-        <std::pair<const std::string&, const MatSharedPtr>>
-        &imagesWithWindowsNames) const noexcept
-{
-    for(auto image : imagesWithWindowsNames)
-         cv::imshow(image.first.c_str(), *image.second);
+    cv::destroyAllWindows();
 }
 
 int Calibrator::handlePause() const noexcept
 {
-    int pressedKey = 0;
+    int pressedKey = cv::waitKey(WAITING_TIME);
 
-    if(cv::waitKey(WAITING_TIME) == PAUSE_KEY)
+    if(pressedKey == PAUSE_KEY)
+    {
+        pressedKey = 0;
         while(pressedKey != PAUSE_KEY && pressedKey != ESCAPE_KEY)
             pressedKey = cv::waitKey(WAITING_TIME);
+    }
     return pressedKey;
 }
 
@@ -68,7 +67,6 @@ void Calibrator::presentImagesWithTheirsUndistortedCopy()
 {
     int pressedKey = 0;
 
-    createWindows({CALIBRATION_WINDOW_NAME, UNDISTORTED_WINDOW_NAME});
     _image = getNextImage();
     while(!_image -> empty() && pressedKey != ESCAPE_KEY)
     {
@@ -78,12 +76,12 @@ void Calibrator::presentImagesWithTheirsUndistortedCopy()
     }
 }
 
-void Calibrator::showImageAndItsUndistortedCopy() 
+void Calibrator::showImageAndItsUndistortedCopy()
     const noexcept
 {
     MatSharedPtr undistortedImage = createUndistortedImage();
 
-    showImages({{CALIBRATION_WINDOW_NAME, _image},
+    _displayManager.showImages({{CALIBRATION_WINDOW_NAME, _image},
                 {UNDISTORTED_WINDOW_NAME, undistortedImage}});
 }
 
@@ -95,14 +93,6 @@ MatSharedPtr Calibrator::createUndistortedImage() const noexcept
     return undistortedImage;
 }
 
-void Calibrator::createWindows(const std::initializer_list
-                                  <const std::string> &names) 
-    const noexcept
-{
-    for(auto name : names)
-        cv::namedWindow(name.c_str());
-}
-
 MatSharedPtr Calibrator::getNextImage() throw (ImageReadError)
 {
     MatSharedPtr image = MatSharedPtr(new cv::Mat());
@@ -112,13 +102,13 @@ MatSharedPtr Calibrator::getNextImage() throw (ImageReadError)
     return image;
 }
 
-void Calibrator::reinitCaptureFieldWithImagesPath(const std::string &path) 
+void Calibrator::reinitCaptureFieldWithImagesPath(const std::string &path)
     noexcept
 {
     _capture = cv::VideoCapture(path);
 }
 
-void Calibrator::saveIntrinsicMatrixWithYmlExtension(const std::string &path) 
+void Calibrator::saveIntrinsicMatrixWithYmlExtension(const std::string &path)
     const noexcept
 {
     cv::FileStorage fileStorage(path, cv::FileStorage::WRITE);
@@ -126,7 +116,7 @@ void Calibrator::saveIntrinsicMatrixWithYmlExtension(const std::string &path)
     fileStorage.release();
 }
 
-void Calibrator::saveDistortionCoeffsWithYmlExtension(const std::string &path) 
+void Calibrator::saveDistortionCoeffsWithYmlExtension(const std::string &path)
     const noexcept
 {
     cv::FileStorage fileStorage(path, cv::FileStorage::WRITE);
@@ -139,7 +129,7 @@ void Calibrator::showChessboardPoints(const cv::Size &boardSize,
                                       const bool &found)
 {
     drawChessboardCorners(*_image, boardSize, corners, found);
-    cv::imshow(CALIBRATION_WINDOW_NAME, *_image);
+    _displayManager.showImages({{CALIBRATION_WINDOW_NAME, _image}});
     cv::waitKey(33);
 }
 
@@ -149,7 +139,7 @@ bool Calibrator::findCornersOnChessboard(const cv::Size &boardSize,
     return findChessboardCorners(*_image,
                                  boardSize,
                                  corners,
-                                 cv::CALIB_CB_ADAPTIVE_THRESH | 
+                                 cv::CALIB_CB_ADAPTIVE_THRESH |
                                  cv::CALIB_CB_FILTER_QUADS);
 }
 
@@ -164,10 +154,10 @@ void Calibrator::getSubpixelAccuracy(MatSharedPtr grayImage,
                      cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
 }
 
-void Calibrator::saveImagePoints(const int &successes, 
+void Calibrator::saveImagePoints(const int &successes,
                                  const int &pointsOnBoardAmount,
                                  const vector<cv::Point2f> &corners,
-                                 vector<vector<cv::Point2f>> &imagePoints, 
+                                 vector<vector<cv::Point2f>> &imagePoints,
                                  vector<vector<cv::Point3f>> &objectPoints)
 {
     for(int j=0; j<pointsOnBoardAmount; j++)
@@ -193,7 +183,7 @@ void Calibrator::findCornersOnImage(MatSharedPtr grayImage,
     this->showChessboardPoints(boardSize, corners, found);
     if(corners.size() == pointsOnBoardAmount)
     {
-        this->saveImagePoints(successes, 
+        this->saveImagePoints(successes,
                               pointsOnBoardAmount,
                               corners,
                               imagePoints,
@@ -223,9 +213,9 @@ int Calibrator::findAllCorners(const int &pointsOnBoardAmount,
 
     while(successes < _imagesAmount)
     {
+        _displayManager.showImages({{CALIBRATION_WINDOW_NAME, _image}});
         if(frame++ % BOARD_DT == 0)
         {
-            this->displayNumberOfSuccesses(successes);
             this->findCornersOnImage(grayImage,
                                      boardSize,
                                      corners,
@@ -233,6 +223,7 @@ int Calibrator::findAllCorners(const int &pointsOnBoardAmount,
                                      pointsOnBoardAmount,
                                      imagePoints,
                                      objectPoints);
+            this->displayNumberOfSuccesses(successes);
         }
 
         this->handlePause();

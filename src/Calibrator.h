@@ -2,6 +2,7 @@
 #define CALIBRATOR_H_
 
 #include "CalibrationExceptions.h"
+#include "DisplayManager.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -25,6 +26,8 @@ public:
     void execute() noexcept;
 
 private:
+    static DisplayManager _displayManager;
+
     MatSharedPtr getNextImage() throw (ImageReadError);
     void reinitCaptureFieldWithImagesPath(const std::string &path) noexcept;
 
@@ -36,14 +39,8 @@ private:
     void presentImagesWithTheirsUndistortedCopy();
 
     void showImageAndItsUndistortedCopy() const noexcept;
-    void showImages(const std::initializer_list 
-                        <std::pair<const std::string&, const MatSharedPtr>>
-                        &imagesWithWindowsNames) const noexcept;
 
     MatSharedPtr createUndistortedImage() const noexcept;
-
-    void createWindows(const std::initializer_list<const std::string> &names) 
-        const noexcept;
 
     int handlePause() const noexcept;
 
@@ -59,10 +56,10 @@ private:
                                  vector<cv::Point2f> &corners);
     void getSubpixelAccuracy(MatSharedPtr grayImage,
                              vector<cv::Point2f> &corners);
-    void saveImagePoints(const int &successes, 
+    void saveImagePoints(const int &successes,
                          const int &pointsOnBoardAmount,
                          const vector<cv::Point2f> &corners,
-                         vector<vector<cv::Point2f>> &imagePoints, 
+                         vector<vector<cv::Point2f>> &imagePoints,
                          vector<vector<cv::Point3f>> &objectPoints);
     MatSharedPtr createGrayImage();
     void displayNumberOfSuccesses(const int &successes);
