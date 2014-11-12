@@ -1,6 +1,5 @@
 #include "Calibrator.h"
-
-DisplayManager Calibrator::_displayManager = DisplayManager();
+#include "DisplayManager.h"
 
 Calibrator::Calibrator(int imagesAmount, int boardWidth, int boardHeight)
     noexcept
@@ -22,7 +21,7 @@ void Calibrator::execute() noexcept
 
     _image = getNextImage();
 
-    _displayManager.createWindows(
+    DisplayManager::createWindows(
         {CALIBRATION_WINDOW_NAME, UNDISTORTED_WINDOW_NAME});
     findAllCorners(pointsOnBoardAmount,
                    boardSize,
@@ -81,7 +80,7 @@ void Calibrator::showImageAndItsUndistortedCopy()
 {
     MatSharedPtr undistortedImage = createUndistortedImage();
 
-    _displayManager.showImages({{CALIBRATION_WINDOW_NAME, _image},
+    DisplayManager::showImages({{CALIBRATION_WINDOW_NAME, _image},
                 {UNDISTORTED_WINDOW_NAME, undistortedImage}});
 }
 
@@ -129,7 +128,7 @@ void Calibrator::showChessboardPoints(const cv::Size &boardSize,
                                       const bool &found)
 {
     drawChessboardCorners(*_image, boardSize, corners, found);
-    _displayManager.showImages({{CALIBRATION_WINDOW_NAME, _image}});
+    DisplayManager::showImages({{CALIBRATION_WINDOW_NAME, _image}});
     cv::waitKey(33);
 }
 
@@ -214,7 +213,7 @@ int Calibrator::findAllCorners(const int &pointsOnBoardAmount,
 
     while(successes < _imagesAmount)
     {
-        _displayManager.showImages({{CALIBRATION_WINDOW_NAME, _image}});
+        DisplayManager::showImages({{CALIBRATION_WINDOW_NAME, _image}});
         if(frame++ % BOARD_DT == 0)
         {
             this->findCornersOnImage(grayImage,

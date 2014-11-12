@@ -18,23 +18,24 @@ class DisplayManager
 public:
     DisplayManager() noexcept;
 
-    void showImages(const std::initializer_list
-                        <std::pair<const std::string&, const MatSharedPtr>>
-                        &imagesWithWindowsNames) const noexcept;
+    static void showImages(const std::initializer_list <std::pair
+                           <const std::string&, const MatSharedPtr>>
+                           &imagesWithWindowsNames) noexcept;
 
-    void createWindows(const std::initializer_list<const std::string> &names)
-        noexcept;
+    static void createWindows(const std::initializer_list
+                              <const std::string> &names) noexcept;
 
-    vector<std::string> listOfOpenedWindows() const noexcept;
+    static vector<std::string> listOfOpenedWindows() noexcept;
 
-    void destroyWindows(const std::initializer_list<const std::string> &names)
-        noexcept;
+    static void destroyWindows(const std::initializer_list
+                               <const std::string> &names) noexcept;
 
-    bool isOpened(const std::string name) const noexcept;
+    static bool isOpened(const std::string name) noexcept;
 
 private:
-    vector<std::string> _openedWindows;
+    static vector<std::string> _openedWindows;
 };
+
 
 
 #endif /* DISPLAYMANAGER_H_ */

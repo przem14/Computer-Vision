@@ -1,5 +1,7 @@
 #include "DisplayManager.h"
 
+vector<std::string> DisplayManager::_openedWindows = vector<std::string>();
+
 DisplayManager::DisplayManager() noexcept
 {
 }
@@ -7,7 +9,7 @@ DisplayManager::DisplayManager() noexcept
 void DisplayManager::showImages(
         const std::initializer_list
         <std::pair<const std::string&, const MatSharedPtr>>
-        &imagesWithWindowsNames) const noexcept
+        &imagesWithWindowsNames) noexcept
 {
     for(auto image : imagesWithWindowsNames)
          cv::imshow(image.first.c_str(), *image.second);
@@ -24,12 +26,12 @@ void DisplayManager::createWindows(const std::initializer_list
         }
 }
 
-vector<std::string> DisplayManager::listOfOpenedWindows() const noexcept
+vector<std::string> DisplayManager::listOfOpenedWindows() noexcept
 {
     return _openedWindows;
 }
 
-bool DisplayManager::isOpened(const std::string name) const noexcept
+bool DisplayManager::isOpened(const std::string name) noexcept
 {
     return std::find(_openedWindows.begin(), _openedWindows.end(), name)
             != _openedWindows.end();

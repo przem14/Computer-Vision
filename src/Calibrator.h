@@ -2,7 +2,6 @@
 #define CALIBRATOR_H_
 
 #include "CalibrationExceptions.h"
-#include "DisplayManager.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -26,8 +25,6 @@ public:
     void execute() noexcept;
 
 private:
-    static DisplayManager _displayManager;
-
     MatSharedPtr getNextImage() throw (ImageReadError);
     void reinitCaptureFieldWithImagesPath(const std::string &path) noexcept;
 
