@@ -40,7 +40,9 @@ private:
 
     MatSharedPtr createUndistortedImage() const noexcept;
 
-    int handlePause(const int time) const noexcept;
+    char handlePause() const noexcept;
+
+    void handleEscInterruption(char pressedKey) const throw (InterruptedByUser);
 
     void showChessboardPoints(const cv::Size &boardSize,
                               const vector<cv::Point2f> &corners,
@@ -90,8 +92,8 @@ private:
 
     const char PAUSE_KEY    = 'p';
     const char ESCAPE_KEY   = 27;
-    const int  WAITING_TIME = 250;
-    const int  SHOWING_TIME = 30;
+    const int  PAUSE_TIME = 250;
+    const int  WAITING_TIME = 30;
 
     const int BOARD_DT = 20;
 };

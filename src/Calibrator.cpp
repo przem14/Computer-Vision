@@ -49,28 +49,34 @@ void Calibrator::execute() noexcept
     cv::destroyAllWindows();
 }
 
-int Calibrator::handlePause(const int time) const noexcept
+char Calibrator::handlePause() const noexcept
 {
-    int pressedKey = cv::waitKey(time);
+    char pressedKey = cv::waitKey(WAITING_TIME);
 
     if(pressedKey == PAUSE_KEY)
     {
         pressedKey = 0;
         while(pressedKey != PAUSE_KEY && pressedKey != ESCAPE_KEY)
-            pressedKey = cv::waitKey(time);
+            pressedKey = cv::waitKey(PAUSE_TIME);
     }
     return pressedKey;
 }
 
+void Calibrator::handleEscInterruption(char pressedKey)
+    const throw (InterruptedByUser)
+{
+    if(pressedKey == ESCAPE_KEY) throw InterruptedByUser();
+}
+
 void Calibrator::presentImagesWithTheirsUndistortedCopy()
 {
-    int pressedKey = 0;
+    char pressedKey = 0;
 
     _image = getNextImage();
     while(!_image -> empty() && pressedKey != ESCAPE_KEY)
     {
         showImageAndItsUndistortedCopy();
-        pressedKey = this->handlePause(WAITING_TIME);
+        pressedKey = handlePause();
         _image = getNextImage();
     }
 }
@@ -129,7 +135,6 @@ void Calibrator::showChessboardPoints(const cv::Size &boardSize,
 {
     drawChessboardCorners(*_image, boardSize, corners, found);
     DisplayManager::showImages({{CALIBRATION_WINDOW_NAME, _image}});
-    cv::waitKey(33);
 }
 
 bool Calibrator::findCornersOnChessboard(const cv::Size &boardSize,
@@ -180,7 +185,6 @@ void Calibrator::findCornersOnImage(MatSharedPtr grayImage,
 
     if(found) this->getSubpixelAccuracy(grayImage, corners);
     this->showChessboardPoints(boardSize, corners, found);
-    this->handlePause(SHOWING_TIME);
     if(corners.size() == pointsOnBoardAmount)
     {
         this->saveImagePoints(successes,
@@ -226,7 +230,8 @@ int Calibrator::findAllCorners(const int &pointsOnBoardAmount,
             this->displayNumberOfSuccesses(successes);
         }
 
-        this->handlePause(WAITING_TIME);
+        char pressedKey = handlePause();
+        handleEscInterruption(pressedKey);
         _image = getNextImage();
     }
     return successes;
