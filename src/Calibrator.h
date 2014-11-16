@@ -40,9 +40,6 @@ private:
 
     MatSharedPtr createUndistortedImage() const noexcept;
 
-    void createWindows(const std::initializer_list<const std::string> &names)
-        const noexcept;
-
     int handlePause(const int time) const noexcept;
 
     void showChessboardPoints(const cv::Size &boardSize,
