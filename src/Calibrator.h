@@ -24,9 +24,10 @@ public:
 
     void execute() noexcept;
 
+    void reinitCaptureFieldWithImagesPath(const std::string &path) noexcept;
+
 private:
     MatSharedPtr getNextImage() throw (ImageReadError);
-    void reinitCaptureFieldWithImagesPath(const std::string &path) noexcept;
 
     void saveIntrinsicMatrixWithYmlExtension(const std::string &path)
         const noexcept;
