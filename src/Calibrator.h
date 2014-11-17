@@ -92,8 +92,9 @@ private:
 
     const char PAUSE_KEY    = 'p';
     const char ESCAPE_KEY   = 27;
-    const int  PAUSE_TIME = 250;
-    const int  WAITING_TIME = 30;
+    const int  PAUSE_TIME   = 250;
+    const int  WAITING_TIME = 50;
+    const int  SHOWING_TIME = 1;
 
     const int BOARD_DT = 20;
 };

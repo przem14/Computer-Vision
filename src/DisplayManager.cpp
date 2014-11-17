@@ -8,11 +8,14 @@ DisplayManager::DisplayManager() noexcept
 
 void DisplayManager::showImages(
         const std::initializer_list
-        <std::pair<const std::string&, const MatSharedPtr>>
-        &imagesWithWindowsNames) noexcept
+        <std::tuple<const std::string &, const MatSharedPtr, const int>>
+        &imagesWithWindowsNamesAndTimesToShow) noexcept
 {
-    for(auto image : imagesWithWindowsNames)
-         cv::imshow(image.first.c_str(), *image.second);
+    for(auto image : imagesWithWindowsNamesAndTimesToShow)
+    {
+        cv::imshow(std::get<0>(image).c_str(), *std::get<1>(image));
+        cv::waitKey(std::get<2>(image));
+    }
 }
 
 void DisplayManager::createWindows(const std::initializer_list

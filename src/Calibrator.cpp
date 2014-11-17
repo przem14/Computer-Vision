@@ -85,9 +85,9 @@ void Calibrator::showImageAndItsUndistortedCopy()
     const noexcept
 {
     MatSharedPtr undistortedImage = createUndistortedImage();
-
-    DisplayManager::showImages({{CALIBRATION_WINDOW_NAME, _image},
-                {UNDISTORTED_WINDOW_NAME, undistortedImage}});
+    DisplayManager::showImages(
+               {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, 1),
+                std::make_tuple(UNDISTORTED_WINDOW_NAME, undistortedImage, 1)});
 }
 
 MatSharedPtr Calibrator::createUndistortedImage() const noexcept
@@ -134,7 +134,8 @@ void Calibrator::showChessboardPoints(const cv::Size &boardSize,
                                       const bool &found)
 {
     drawChessboardCorners(*_image, boardSize, corners, found);
-    DisplayManager::showImages({{CALIBRATION_WINDOW_NAME, _image}});
+    DisplayManager::showImages(
+                        {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, 1)});
 }
 
 bool Calibrator::findCornersOnChessboard(const cv::Size &boardSize,
@@ -217,7 +218,8 @@ int Calibrator::findAllCorners(const int &pointsOnBoardAmount,
 
     while(successes < _imagesAmount)
     {
-        DisplayManager::showImages({{CALIBRATION_WINDOW_NAME, _image}});
+        DisplayManager::showImages(
+            {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, SHOWING_TIME)});
         if(frame++ % BOARD_DT == 0)
         {
             this->findCornersOnImage(grayImage,
