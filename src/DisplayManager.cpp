@@ -8,8 +8,8 @@ DisplayManager::DisplayManager() noexcept
 
 void DisplayManager::showImages(
         const std::initializer_list
-        <std::tuple<const std::string &, const MatSharedPtr, const int>>
-        &imagesWithWindowsNamesAndTimesToShow) noexcept
+            <std::tuple<const std::string, const MatSharedPtr, const int>>
+            &imagesWithWindowsNamesAndTimesToShow) noexcept
 {
     for(auto image : imagesWithWindowsNamesAndTimesToShow)
     {

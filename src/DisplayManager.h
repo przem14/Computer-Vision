@@ -19,7 +19,7 @@ public:
     DisplayManager() noexcept;
 
     static void showImages(const std::initializer_list <std::tuple
-                           <const std::string&, const MatSharedPtr, const int>>
+                           <const std::string, const MatSharedPtr, const int>>
                            &imagesWithWindowsNamesAndTimesToShow) noexcept;
 
     static void createWindows(const std::initializer_list
