@@ -13,13 +13,12 @@ public:
                     const int boardWidth,
                     const int boardHeight) noexcept;
 
-    const int imagesAmount() const noexcept { return _imagesAmount; }
-    const int boardWidth()   const noexcept { return _boardWidth; }
-    const int boardHeight()  const noexcept { return _boardHeight; }
+    int imagesAmount() const noexcept { return _imagesAmount; }
+    int boardWidth()   const noexcept { return _boardWidth; }
+    int boardHeight()  const noexcept { return _boardHeight; }
 
-    const int pointsOnBoardAmount() const noexcept
-    { return _pointsOnBoardAmount; }
-    const cv::Size boardSize() const noexcept { return _boardSize; }
+    int pointsOnBoardAmount() const noexcept { return _pointsOnBoardAmount; }
+    const cv::Size& boardSize() const noexcept { return _boardSize; }
 
     const cv::Mat& intrinsic()  const noexcept { return _intrinsic;  } 
     const cv::Mat& distortion() const noexcept { return _distortion; }
@@ -29,8 +28,8 @@ public:
     void setDistortion(const cv::Mat& distortion) noexcept
     { _distortion = distortion; }
 
-    const vector<cv::Mat> rotation() const noexcept { return _rotation; }
-    const vector<cv::Mat> translation() const noexcept { return _translation; }
+    const vector<cv::Mat>& rotation() const noexcept { return _rotation; }
+    const vector<cv::Mat>& translation() const noexcept { return _translation; }
 
     void setRotation(const vector<cv::Mat> &rotation) noexcept 
     { _rotation = rotation; }
