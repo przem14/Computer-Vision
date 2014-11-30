@@ -23,7 +23,7 @@ class InterruptedByUser : public std::exception
 public:
     virtual const char* what() const noexcept
     {
-        return "Kalibracja przerwana przez uzytkownika";
+        return "Proces przerwany przez uzytkownika";
     }
 };
 

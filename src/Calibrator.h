@@ -1,7 +1,7 @@
 #ifndef CALIBRATOR_H_
 #define CALIBRATOR_H_
 
-#include "CalibrationExceptions.h"
+#include "CommonExceptions.h"
 #include "CalibrationData.h"
 
 #include <opencv2/highgui/highgui.hpp>
