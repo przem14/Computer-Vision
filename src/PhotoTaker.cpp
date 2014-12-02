@@ -13,7 +13,7 @@ void PhotoTaker::takePhotos(const int numberOfPhotos) noexcept
 
     while(photosTaken < numberOfPhotos)
     {
-        getNextImagesFromAllDevices();
+        nextImagesFromAllDevices();
         char pressedKey = waitForKeyInterruption();
         handleKeyInterruption(pressedKey, photosTaken);
         showImagesForAllDevices();
@@ -57,25 +57,26 @@ void PhotoTaker::closeWindowsForAllDevices() const noexcept
         DisplayManager::destroyWindows({std::get<0>(tuple)});
 }
 
-MatSharedPtr PhotoTaker::getNextImage(CaptureAndSource &captureAndSource)
+MatSharedPtr PhotoTaker::nextImage(CaptureAndSource &captureAndSource)
     const throw (ImageReadError)
 {
     MatSharedPtr image = MatSharedPtr(new cv::Mat());
+    cv::VideoCapture capture = captureAndSource.first;
 
-    if(!captureAndSource.first.read(*image))
+    if(!capture.read(*image))
     {
-        captureAndSource.first.open(captureAndSource.second);
-        if (!captureAndSource.first.read(*image))
+        capture.open(captureAndSource.second);
+        if (!capture.read(*image))
             throw ImageReadError();
     }
     return image;
 }
 
-void PhotoTaker::getNextImagesFromAllDevices() noexcept
+void PhotoTaker::nextImagesFromAllDevices() noexcept
 {
     for(auto &tuple : _pathsCapturesAndImages)
     {
-        std::get<2>(tuple) = getNextImage(std::get<1>(tuple));
+        std::get<2>(tuple) = nextImage(std::get<1>(tuple));
     }
 }
 

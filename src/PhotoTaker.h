@@ -30,9 +30,9 @@ private:
     void showImagesForAllDevices() const noexcept;
     void closeWindowsForAllDevices() const noexcept;
 
-    MatSharedPtr getNextImage(CaptureAndSource &captureAndSource)
+    MatSharedPtr nextImage(CaptureAndSource &captureAndSource)
         const throw (ImageReadError);
-    void getNextImagesFromAllDevices() noexcept;
+    void nextImagesFromAllDevices() noexcept;
 
     char waitForKeyInterruption() const noexcept;
     void handleKeyInterruption(char pressedKey, int &photosTaken)
