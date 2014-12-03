@@ -1,17 +1,16 @@
 #ifndef STEREOCALIBRATOR_H
 #define STEREOCALIBRATOR_H
 
-#include "cv.h"
-#include "cxmisc.h"
-#include "highgui.h"
-#include "cvaux.h"
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
+#include <iostream>
 #include <vector>
 #include <string>
-#include <algorithm>
-#include <stdio.h>
-#include <ctype.h>
+#include <memory>
 
-using namespace std;
+using std::vector;
+using MatSharedPtr = std::shared_ptr<cv::Mat>;
 
 class StereoCalibrator
 {
