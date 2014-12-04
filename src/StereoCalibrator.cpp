@@ -5,7 +5,8 @@ StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
                                    const std::string imagesRight,
                                    int boardWidth,
                                    int boardHeight) noexcept
-    :_imagesLeft(imagesLeft),
+    :
+     _imagesLeft(imagesLeft),
      _imagesRight(imagesRight),
      _captureLeft(imagesLeft),
      _captureRight(imagesRight),
@@ -24,7 +25,6 @@ void StereoCalibrator::execute() noexcept
     const float squareSize = 1.f; //Set this to your actual square size
     int i, j, lr, nframes, n = _boardWidth*_boardHeight, N = 0;
     vector<std::string> imageNames[2];
-    vector<vector<cv::Point2f>> points[2];
     vector<int> npoints;
     vector<uchar> active[2];
     vector<cv::Point2f> temp(n);
@@ -105,7 +105,7 @@ void StereoCalibrator::execute() noexcept
                 cv::Size(11, 11), cv::Size(-1,-1),
                 cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS,
                 30, 0.01) );
-            points[lr].push_back(temp);
+            _points[lr].push_back(temp);
         }
         img -> release();
     }
@@ -126,8 +126,8 @@ void StereoCalibrator::execute() noexcept
     // CALIBRATE THE STEREO CAMERAS
     std::cout << "Running stereo calibration ...";
     std::fflush(stdout);
-    cv::stereoCalibrate(objectPoints, points[0],
-        points[1],
+    cv::stereoCalibrate(objectPoints, _points[0],
+        _points[1],
         _M1, _D1, _M2, _D2,
         imageSize, _R, _T, _E, _F,
         cv::TermCriteria(CV_TERMCRIT_ITER+
@@ -136,32 +136,7 @@ void StereoCalibrator::execute() noexcept
         cv::CALIB_ZERO_TANGENT_DIST +
         cv::CALIB_SAME_FOCAL_LENGTH );
     std::cout << " done" << std::endl;
-    // CALIBRATION QUALITY CHECK
-    // because the output fundamental matrix implicitly
-    // includes all the output information,
-    // we can check the quality of calibration using the
-    // epipolar geometry constraint: m2^t*F*m1=0
-    vector<cv::Point3f> lines[2];
 
-    double avgErr = 0;
-    for( i = 0; i < nframes; i++ )
-    {
-        cv::undistortPoints( points[0][i], points[0][i],
-            _M1, _D1, cv::noArray(), _M1 );
-        cv::undistortPoints( points[1][i], points[1][i],
-            _M2, _D2, cv::noArray(), _M2 );
-        cv::computeCorrespondEpilines( points[0][i], 1, _F, lines[0] );
-        cv::computeCorrespondEpilines( points[1][i], 2, _F, lines[1] );
-        for(j = 0; j < n; j++)
-        {
-            double err = std::abs(points[0][i][j].x*lines[1][j].x +
-                points[0][i][j].y*lines[1][j].y + lines[1][j].z)
-                + std::abs(points[1][i][j].x*lines[0][j].x +
-                points[1][i][j].y*lines[0][j].y + lines[0][j].z);
-            avgErr += err;
-        }
-    }
-    std::cout << "avg err = " << avgErr/(nframes*n) << std::endl;
     //COMPUTE AND DISPLAY RECTIFICATION
     if( showUndistorted )
     {
@@ -204,8 +179,8 @@ void StereoCalibrator::execute() noexcept
             for( i = 0; i < 2; i++ )
             {
                 for( j = 0; j < nframes; j++ )
-                    std::copy(points[i][j].begin(),
-                              points[i][j].end(),
+                    std::copy(_points[i][j].begin(),
+                              _points[i][j].end(),
                               back_inserter(allImagesPoints[i]));
             }
             if( useUncalibrated == 2 )
@@ -264,4 +239,48 @@ void StereoCalibrator::execute() noexcept
             }
         }
     }
+};
+
+double StereoCalibrator::computeCalibrationError(
+                                   cv::Mat _M1,
+                                   cv::Mat _M2,
+                                   cv::Mat _D1,
+                                   cv::Mat _D2,
+                                   cv::Mat _F,
+                                   int nframes) noexcept
+{
+    vector<cv::Point3f> lines[2];
+    int n = _boardWidth * _boardHeight;
+
+    double avgErr = 0;
+    for(int i = 0; i < nframes; i++ )
+    {
+        cv::undistortPoints(_points[0][i], _points[0][i],
+            _M1, _D1, cv::noArray(), _M1 );
+        cv::undistortPoints(_points[1][i], _points[1][i],
+            _M2, _D2, cv::noArray(), _M2 );
+        cv::computeCorrespondEpilines(_points[0][i], 1, _F, lines[0] );
+        cv::computeCorrespondEpilines(_points[1][i], 2, _F, lines[1] );
+        for(int j = 0; j < n; j++)
+        {
+            double err = std::abs(_points[0][i][j].x*lines[1][j].x +
+                _points[0][i][j].y*lines[1][j].y + lines[1][j].z)
+                + std::abs(_points[1][i][j].x*lines[0][j].x +
+                _points[1][i][j].y*lines[0][j].y + lines[0][j].z);
+            avgErr += err;
+        }
+    }
+    return avgErr/(nframes*n);
+}
+
+void StereoCalibrator::showCalibrationError(
+                                   cv::Mat _M1,
+                                   cv::Mat _M2,
+                                   cv::Mat _D1,
+                                   cv::Mat _D2,
+                                   cv::Mat _F,
+                                   int nframes) noexcept
+{
+    double err = computeCalibrationError(_M1, _M2, _D1, _D2, _F, nframes);
+    std::cout << "Average calibration error: " << err << "\n";
 }

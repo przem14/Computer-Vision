@@ -17,12 +17,25 @@ class StereoCalibrator
 public:
     StereoCalibrator(const std::string imagesLeft,
                      const std::string imagesRight,
-                     int boardWidth, int boardHeight) noexcept;
+                     int boardWidth,
+                     int boardHeight) noexcept;
 
     void execute() noexcept;
+    double computeCalibrationError(cv::Mat _M1,
+                                   cv::Mat _M2,
+                                   cv::Mat _D1,
+                                   cv::Mat _D2,
+                                   cv::Mat _F,
+                                   int nframes) noexcept;
+    void showCalibrationError(cv::Mat _M1,
+                              cv::Mat _M2,
+                              cv::Mat _D1,
+                              cv::Mat _D2,
+                              cv::Mat _F,
+                              int nframes) noexcept;
 
 private:
-    MatSharedPtr _grayImage;
+    vector<vector<cv::Point2f>> _points[2];
     std::string _imagesLeft;
     std::string _imagesRight;
     cv::VideoCapture _captureLeft;
