@@ -1,9 +1,14 @@
 #include "StereoCalibrator.h"
+#include "DisplayManager.h"
 
-StereoCalibrator::StereoCalibrator(const char* imageList,
+StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
+                                   const std::string imagesRight,
                                    int boardWidth,
                                    int boardHeight) noexcept
-    :_imageList(imageList),
+    :_imagesLeft(imagesLeft),
+     _imagesRight(imagesRight),
+     _captureLeft(imagesLeft),
+     _captureRight(imagesRight),
      _boardWidth(boardWidth),
      _boardHeight(boardHeight)
 {
@@ -15,11 +20,8 @@ void StereoCalibrator::execute() noexcept
 
     int displayCorners = 0;
     int showUndistorted = 1;
-    bool isVerticalStereo = false;//OpenCV can handle left-right
-    //or up-down camera arrangements
     const int maxScale = 1;
     const float squareSize = 1.f; //Set this to your actual square size
-    FILE* f = fopen(_imageList, "rt");
     int i, j, lr, nframes, n = _boardWidth*_boardHeight, N = 0;
     vector<std::string> imageNames[2];
     vector<vector<cv::Point2f>> points[2];
@@ -39,29 +41,19 @@ void StereoCalibrator::execute() noexcept
     if( displayCorners )
         cv::namedWindow( "corners", 1 );
     // READ IN THE LIST OF CHESSBOARDS:
-    if( !f )
-    {
-        std::cerr << "can not open file " << _imageList << std::endl;
-        return;
-    }
     for(i=0;;i++)
     {
-        char buf[1024];
         int result=0;
         lr = i % 2;
         //vector<cv::Point2f>& pts = points[lr];
-        if( !fgets( buf, sizeof(buf)-3, f ))
-            break;
-        size_t len = strlen(buf);
-        while( len > 0 && isspace(buf[len-1]))
-            buf[--len] = '\0';
-        if( buf[0] == '#')
-            continue;
-        MatSharedPtr img(new cv::Mat(cv::imread( buf, 0 )));
+        MatSharedPtr img = MatSharedPtr(new cv::Mat());
+        if (lr == 0)
+            _captureLeft.read(*img);
+        else
+            _captureRight.read(*img);
         if( img -> empty() )
             break;
         imageSize = img -> size();
-        imageNames[lr].push_back(buf);
         //FIND CHESSBOARDS AND CORNERS THEREIN:
         for( int s = 1; s <= maxScale; s++ )
         {
@@ -91,7 +83,6 @@ void StereoCalibrator::execute() noexcept
         }
         if( displayCorners )
         {
-            std::cout << buf << std::endl;
             MatSharedPtr cimg(new cv::Mat( imageSize, 8, 3 ));
             cv::cvtColor( *img, *cimg, CV_GRAY2BGR );
             cv::drawChessboardCorners( *cimg, cv::Size(_boardWidth, _boardHeight),
@@ -108,7 +99,9 @@ void StereoCalibrator::execute() noexcept
         if( result )
         {
             //Calibration will suffer without subpixel interpolation
-            cv::cornerSubPix( *img, temp,
+            MatSharedPtr grayImage(new cv::Mat(imageSize, CV_8UC3));
+            cv::cvtColor(*img, *grayImage, CV_BGR2GRAY);
+            cv::cornerSubPix( *grayImage, temp,
                 cv::Size(11, 11), cv::Size(-1,-1),
                 cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS,
                 30, 0.01) );
@@ -116,7 +109,6 @@ void StereoCalibrator::execute() noexcept
         }
         img -> release();
     }
-    fclose(f);
     // HARVEST CHESSBOARD 3D OBJECT POINT LIST:
     nframes = active[0].size();//Number of good chessboads found
     vector<vector<cv::Point3f>> objectPoints(nframes, vector<cv::Point3f>(n));
@@ -179,7 +171,6 @@ void StereoCalibrator::execute() noexcept
         MatSharedPtr my2(new cv::Mat(imageSize.height, imageSize.width, CV_32F));
         MatSharedPtr img1r(new cv::Mat(imageSize.height, imageSize.width, CV_8U));
         MatSharedPtr img2r(new cv::Mat(imageSize.height, imageSize.width, CV_8U));
-        MatSharedPtr disp(new cv::Mat(imageSize.height, imageSize.width, CV_16S));
         MatSharedPtr pair;
         cv::Mat _R1(3, 3, CV_64F);
         cv::Mat _R2(3, 3, CV_64F);
@@ -193,8 +184,6 @@ void StereoCalibrator::execute() noexcept
                 _R, _T,
                 _R1, _R2, _P1, _P2, _Q,
                 cv::CALIB_ZERO_DISPARITY );
-            isVerticalStereo =
-                    std::abs(_P2.at<double>(1,3)) > std::abs(_P2.at<double>(0,3));
             //Precompute maps for cvRemap()
             cv::initUndistortRectifyMap(_M1, _D1, _R1, _P1,
                                         imageSize, CV_32F, *mx1, *my1);
@@ -236,66 +225,43 @@ void StereoCalibrator::execute() noexcept
         }
         else
             assert(0);
-        cv::namedWindow( "rectified", 1 );
         // RECTIFY THE IMAGES
-        if( !isVerticalStereo )
-            pair = MatSharedPtr(new cv::Mat( imageSize.height, imageSize.width*2,
-            CV_8UC3 ));
-        else
-            pair = MatSharedPtr(new cv::Mat( imageSize.height*2, imageSize.width,
-            CV_8UC3 ));
+        pair = MatSharedPtr(new cv::Mat(imageSize.height,
+                                        imageSize.width*2, CV_8UC3));
+        _captureLeft.open(_imagesLeft);
+        _captureRight.open(_imagesRight);
         for( i = 0; i < nframes; i++ )
         {
-            MatSharedPtr img1(new cv::Mat(
-                                    cv::imread(imageNames[0][i].c_str(), 0)));
-            MatSharedPtr img2(new cv::Mat(
-                                    cv::imread(imageNames[1][i].c_str(), 0)));
+            MatSharedPtr img1 = MatSharedPtr(new cv::Mat());
+            MatSharedPtr img2 = MatSharedPtr(new cv::Mat());
+
+            _captureLeft.read(*img1);
+            MatSharedPtr grayImage1(new cv::Mat(imageSize, CV_8UC3));
+            cv::cvtColor(*img1, *grayImage1, CV_BGR2GRAY);
+
+            _captureRight.read(*img2);
+            MatSharedPtr grayImage2(new cv::Mat(imageSize, CV_8UC3));
+            cv::cvtColor(*img2, *grayImage2, CV_BGR2GRAY);
+
             if( !img1 -> empty() && !img2 -> empty() )
             {
                 MatSharedPtr part;
-                cv::remap( *img1, *img1r, *mx1, *my1, cv::INTER_LINEAR );
-                cv::remap( *img2, *img2r, *mx2, *my2, cv::INTER_LINEAR );
-                if( !isVerticalStereo )
-                {
-                    part = MatSharedPtr(new cv::Mat(
-                                    pair -> colRange(0, imageSize.width)));
-                    cv::cvtColor( *img1r, *part, CV_GRAY2BGR );
-                    part = MatSharedPtr(new cv::Mat(
-                                    pair -> colRange(imageSize.width,
-                                                     imageSize.width*2)));
-                    cv::cvtColor( *img2r, *part, CV_GRAY2BGR );
-                    for( j = 0; j < imageSize.height; j += 16 )
-                        cv::line( *pair, cv::Point(0,j),
-                        cv::Point(imageSize.width*2,j),
-                        CV_RGB(0,255,0));
-                }
-                else
-                {
-                    part = MatSharedPtr(new cv::Mat(
-                                    pair -> rowRange(0, imageSize.height)));
-                    cv::cvtColor( *img1r, *part, CV_GRAY2BGR );
-                    part = MatSharedPtr(new cv::Mat(
-                                    pair -> rowRange(imageSize.height,
-                                                     imageSize.height*2)));
-                    cv::cvtColor( *img2r, *part, CV_GRAY2BGR );
-                    for( j = 0; j < imageSize.width; j += 16 )
-                        cv::line( *pair, cv::Point(j,0),
-                        cv::Point(j,imageSize.height*2),
-                        CV_RGB(0,255,0));
-                }
-                cv::imshow( "rectified", *pair );
-                if( cv::waitKey() == 27 )
-                    break;
+                cv::remap( *grayImage1, *img1r, *mx1, *my1, cv::INTER_LINEAR );
+                cv::remap( *grayImage2, *img2r, *mx2, *my2, cv::INTER_LINEAR );
+                part = MatSharedPtr(new cv::Mat(
+                                pair -> colRange(0, imageSize.width)));
+                cv::cvtColor( *img1r, *part, CV_GRAY2BGR );
+                part = MatSharedPtr(new cv::Mat(
+                                pair -> colRange(imageSize.width,
+                                                 imageSize.width*2)));
+                cv::cvtColor( *img2r, *part, CV_GRAY2BGR );
+                for( j = 0; j < imageSize.height; j += 16 )
+                    cv::line( *pair, cv::Point(0,j),
+                    cv::Point(imageSize.width*2,j),
+                    CV_RGB(0,255,0));
+                DisplayManager::showImages(
+                    {std::make_tuple("rectified", pair, 5000)});
             }
-            img1 -> release();
-            img2 -> release();
         }
-        mx1 -> release();
-        my1 -> release();
-        mx2 -> release();
-        my2 -> release();
-        img1r -> release();
-        img2r -> release();
-        disp -> release();
     }
 }

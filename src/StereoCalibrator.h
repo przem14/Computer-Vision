@@ -15,13 +15,18 @@ using MatSharedPtr = std::shared_ptr<cv::Mat>;
 class StereoCalibrator
 {
 public:
-    StereoCalibrator(const char* imageList, int boardWidth, int boardHeight)
-        noexcept;
+    StereoCalibrator(const std::string imagesLeft,
+                     const std::string imagesRight,
+                     int boardWidth, int boardHeight) noexcept;
 
     void execute() noexcept;
 
 private:
-    const char* _imageList;
+    MatSharedPtr _grayImage;
+    std::string _imagesLeft;
+    std::string _imagesRight;
+    cv::VideoCapture _captureLeft;
+    cv::VideoCapture _captureRight;
     int _boardWidth;
     int _boardHeight;
 };
