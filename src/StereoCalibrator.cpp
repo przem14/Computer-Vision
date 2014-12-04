@@ -22,7 +22,7 @@ void StereoCalibrator::execute() noexcept
     int showUndistorted = 1;
     const int maxScale = 1;
     const float squareSize = 1.f; //Set this to your actual square size
-    int i, j, lr, nframes, n = _boardWidth*_boardHeight, N = 0;
+    int lr, nframes, n = _boardWidth*_boardHeight, N = 0;
     vector<std::string> imageNames[2];
     vector<int> npoints;
     vector<uchar> active[2];
@@ -33,85 +33,85 @@ void StereoCalibrator::execute() noexcept
     cv::Mat _T(3, 1, CV_32FC1);
     cv::Mat _E(3, 3, CV_32FC1);
     cv::Mat _F(3, 3, CV_32FC1);
-    if( displayCorners )
-        cv::namedWindow( "corners", 1 );
+    if(displayCorners)
+        DisplayManager::createWindows({"Corners"});
     // READ IN THE LIST OF CHESSBOARDS:
-    for(i=0;;i++)
+    for (int i = 0;; i++)
     {
-        int result=0;
+        int result = 0;
         lr = i % 2;
-        //vector<cv::Point2f>& pts = points[lr];
         MatSharedPtr img = MatSharedPtr(new cv::Mat());
         if (lr == 0)
             _captureLeft.read(*img);
         else
             _captureRight.read(*img);
-        if( img -> empty() )
+        if (img -> empty())
             break;
         imageSize = img -> size();
         //FIND CHESSBOARDS AND CORNERS THEREIN:
-        for( int s = 1; s <= maxScale; s++ )
+        for (int s = 1; s <= maxScale; s++)
         {
             MatSharedPtr timg = img;
-            if( s > 1 )
-            {
+            if (s > 1)
                 cv::resize(*img,
                            *timg,
                            cv::Size(imageSize.width * s, imageSize.height * s),
                            cv::INTER_CUBIC);
-            }
-            result = findChessboardCorners( *timg,
-                cv::Size(_boardWidth, _boardHeight),
-                temp,
-                cv::CALIB_CB_ADAPTIVE_THRESH |
-                cv::CALIB_CB_NORMALIZE_IMAGE);
-            if( timg != img )
-                timg -> release();
-            if( result || s == maxScale )
-                for( j = 0; j < temp.size(); j++ )
-            {
-                temp[j].x /= s;
-                temp[j].y /= s;
-            }
-            if( result )
+            result = findChessboardCorners(
+                        *timg,
+                        cv::Size(_boardWidth, _boardHeight),
+                        temp,
+                        cv::CALIB_CB_ADAPTIVE_THRESH |
+                        cv::CALIB_CB_NORMALIZE_IMAGE);
+            if (result || s == maxScale)
+                for (int j = 0; j < temp.size(); j++)
+                {
+                    temp[j].x /= s;
+                    temp[j].y /= s;
+                }
+            if (result)
                 break;
         }
-        if( displayCorners )
+
+        if (displayCorners)
         {
-            MatSharedPtr cimg(new cv::Mat( imageSize, 8, 3 ));
-            cv::cvtColor( *img, *cimg, CV_GRAY2BGR );
-            cv::drawChessboardCorners( *cimg, cv::Size(_boardWidth, _boardHeight),
-                temp, result );
-            cv::imshow( "corners", *cimg );
-            cimg -> release();
-            if( cv::waitKey(0) == 27 ) //Allow ESC to quit
-                exit(-1);
+            MatSharedPtr cimg(new cv::Mat(imageSize, 8, 3));
+            cv::cvtColor(*img, *cimg, CV_GRAY2BGR);
+            cv::drawChessboardCorners(
+                    *cimg,
+                    cv::Size(_boardWidth, _boardHeight),
+                    temp,
+                    result);
+            DisplayManager::showImages(
+                {std::make_tuple("corners", cimg, 5000)});
         }
         else
             putchar('.');
         active[lr].push_back((uchar)result);
     //assert( result != 0 );
-        if( result )
+        if (result)
         {
-            //Calibration will suffer without subpixel interpolation
             MatSharedPtr grayImage(new cv::Mat(imageSize, CV_8UC3));
             cv::cvtColor(*img, *grayImage, CV_BGR2GRAY);
-            cv::cornerSubPix( *grayImage, temp,
-                cv::Size(11, 11), cv::Size(-1,-1),
-                cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS,
-                30, 0.01) );
+            cv::cornerSubPix(
+                    *grayImage,
+                    temp,
+                    cv::Size(11, 11),
+                    cv::Size(-1,-1),
+                    cv::TermCriteria(
+                        CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 30, 0.01));
             _points[lr].push_back(temp);
         }
-        img -> release();
     }
     // HARVEST CHESSBOARD 3D OBJECT POINT LIST:
     nframes = active[0].size();//Number of good chessboads found
     vector<vector<cv::Point3f>> objectPoints(nframes, vector<cv::Point3f>(n));
 
-    for( int k = 0; k < nframes; k++ )
-        for( i = 0; i < _boardHeight; i++ )
-            for( j = 0; j < _boardWidth; j++ )
-                objectPoints[k][i*_boardWidth + j] = cv::Point3f(i*squareSize, j*squareSize, 0);
+    for (int k = 0; k < nframes; k++)
+        for (int i = 0; i < _boardHeight; i++)
+            for (int j = 0; j < _boardWidth; j++)
+                objectPoints[k][i*_boardWidth + j] =
+                    cv::Point3f(i*squareSize, j*squareSize, 0);
     npoints.resize(nframes,n);
     N = nframes*n;
     cv::setIdentity(_intrinsicLeft);
@@ -119,21 +119,23 @@ void StereoCalibrator::execute() noexcept
     _distortionLeft.setTo(cv::Scalar::all(0));
     _distortionRight.setTo(cv::Scalar::all(0));
     // CALIBRATE THE STEREO CAMERAS
-    std::cout << "Running stereo calibration ...";
+    std::cout << "\nRunning stereo calibration ...";
     std::fflush(stdout);
-    cv::stereoCalibrate(objectPoints, _points[0],
-        _points[1],
-        _intrinsicLeft, _distortionLeft, _intrinsicRight, _distortionRight,
-        imageSize, _R, _T, _E, _F,
-        cv::TermCriteria(CV_TERMCRIT_ITER+
-        CV_TERMCRIT_EPS, 100, 1e-5),
-        cv::CALIB_FIX_ASPECT_RATIO +
-        cv::CALIB_ZERO_TANGENT_DIST +
-        cv::CALIB_SAME_FOCAL_LENGTH );
-    std::cout << " done" << std::endl;
+    cv::stereoCalibrate(
+            objectPoints,
+            _points[0],
+            _points[1],
+            _intrinsicLeft, _distortionLeft, _intrinsicRight, _distortionRight,
+            imageSize,
+            _R, _T, _E, _F,
+            cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
+            cv::CALIB_FIX_ASPECT_RATIO +
+            cv::CALIB_ZERO_TANGENT_DIST +
+            cv::CALIB_SAME_FOCAL_LENGTH);
+    std::cout << " done\n";
 
     //COMPUTE AND DISPLAY RECTIFICATION
-    if( showUndistorted )
+    if (showUndistorted)
     {
         MatSharedPtr mx1(new cv::Mat(imageSize.height, imageSize.width, CV_32F));
         MatSharedPtr my1(new cv::Mat(imageSize.height, imageSize.width, CV_32F));
@@ -145,34 +147,37 @@ void StereoCalibrator::execute() noexcept
         cv::Mat _R1(3, 3, CV_32FC1);
         cv::Mat _R2(3, 3, CV_32FC1);
         // IF BY CALIBRATED (BOUGUET'S METHOD)
-        if( useUncalibrated == 0 )
+        if (useUncalibrated == 0)
         {
             cv::Mat _P1(3, 4, CV_32FC1);
             cv::Mat _P2(3, 4, CV_32FC1);
             cv::Mat _Q(3, 4, CV_32FC1);
-            cv::stereoRectify(_intrinsicLeft,
-                              _distortionLeft,
-                              _intrinsicRight,
-                              _distortionRight,
-                              imageSize,
-                              _R, _T, _R1, _R2, _P1, _P2, _Q,
-                              cv::CALIB_ZERO_DISPARITY );
+            cv::stereoRectify(
+                    _intrinsicLeft,
+                    _distortionLeft,
+                    _intrinsicRight,
+                    _distortionRight,
+                    imageSize,
+                    _R, _T, _R1, _R2, _P1, _P2, _Q,
+                    cv::CALIB_ZERO_DISPARITY );
             //Precompute maps for cvRemap()
-            cv::initUndistortRectifyMap(_intrinsicLeft,
-                                        _distortionLeft,
-                                        _R1, _P1,
-                                        imageSize,
-                                        CV_32F,
-                                        *mx1, *my1);
-            cv::initUndistortRectifyMap(_intrinsicRight,
-                                        _distortionRight,
-                                        _R2, _P2,
-                                        imageSize,
-                                        CV_32F,
-                                        *mx2, *my2);
+            cv::initUndistortRectifyMap(
+                    _intrinsicLeft,
+                    _distortionLeft,
+                    _R1, _P1,
+                    imageSize,
+                    CV_32F,
+                    *mx1, *my1);
+            cv::initUndistortRectifyMap(
+                    _intrinsicRight,
+                    _distortionRight,
+                    _R2, _P2,
+                    imageSize,
+                    CV_32F,
+                    *mx2, *my2);
         }
         //OR ELSE HARTLEY'S METHOD
-        else if( useUncalibrated == 1 || useUncalibrated == 2 )
+        else if (useUncalibrated == 1 || useUncalibrated == 2)
         // use intrinsic parameters of each camera, but
         // compute the rectification transformation directly
         // from the fundamental matrix
@@ -182,46 +187,50 @@ void StereoCalibrator::execute() noexcept
             cv::Mat _iM(3, 3, CV_32FC1);
             //Just to show you could have independently used F
             vector<cv::Point2f> allImagesPoints[2];
-            for( i = 0; i < 2; i++ )
+            for (int i = 0; i < 2; i++)
             {
-                for( j = 0; j < nframes; j++ )
+                for (int j = 0; j < nframes; j++)
                     std::copy(_points[i][j].begin(),
                               _points[i][j].end(),
                               back_inserter(allImagesPoints[i]));
             }
-            if( useUncalibrated == 2 )
-                _F = cv::findFundamentalMat( allImagesPoints[0],
-                allImagesPoints[1]);
-            cv::stereoRectifyUncalibrated( allImagesPoints[0],
-                allImagesPoints[1], _F,
-                imageSize,
-                _H1, _H2, 3);
-            _R1 = _intrinsicLeft.inv()*_H1*_intrinsicLeft;
-            _R2 = _intrinsicRight.inv()*_H2*_intrinsicRight;
+            if (useUncalibrated == 2)
+                _F = cv::findFundamentalMat(allImagesPoints[0],
+                                            allImagesPoints[1]);
+            cv::stereoRectifyUncalibrated(
+                    allImagesPoints[0],
+                    allImagesPoints[1],
+                    _F,
+                    imageSize,
+                    _H1, _H2, 3);
+            _R1 = _intrinsicLeft.inv() * _H1 * _intrinsicLeft;
+            _R2 = _intrinsicRight.inv() * _H2 * _intrinsicRight;
             //Precompute map for cvRemap()
-            cv::initUndistortRectifyMap(_intrinsicLeft,
-                                        _distortionLeft,
-                                        _R1,
-                                        _intrinsicLeft,
-                                        imageSize,
-                                        CV_32F,
-                                        *mx1, *my1);
-            cv::initUndistortRectifyMap(_intrinsicRight,
-                                        _distortionLeft,
-                                        _R2,
-                                        _intrinsicRight,
-                                        imageSize,
-                                        CV_32F,
-                                        *mx2, *my2);
+            cv::initUndistortRectifyMap(
+                    _intrinsicLeft,
+                    _distortionLeft,
+                    _R1,
+                    _intrinsicLeft,
+                    imageSize,
+                    CV_32F,
+                    *mx1, *my1);
+            cv::initUndistortRectifyMap(
+                    _intrinsicRight,
+                    _distortionLeft,
+                    _R2,
+                    _intrinsicRight,
+                    imageSize,
+                    CV_32F,
+                    *mx2, *my2);
         }
         else
             assert(0);
         // RECTIFY THE IMAGES
-        pair = MatSharedPtr(new cv::Mat(imageSize.height,
-                                        imageSize.width*2, CV_8UC3));
+        pair = MatSharedPtr(new cv::Mat(imageSize.height, imageSize.width*2,
+                                        CV_8UC3));
         _captureLeft.open(_imagesLeft);
         _captureRight.open(_imagesRight);
-        for( i = 0; i < nframes; i++ )
+        for (int i = 0; i < nframes; i++)
         {
             MatSharedPtr img1 = MatSharedPtr(new cv::Mat());
             MatSharedPtr img2 = MatSharedPtr(new cv::Mat());
@@ -234,22 +243,21 @@ void StereoCalibrator::execute() noexcept
             MatSharedPtr grayImage2(new cv::Mat(imageSize, CV_8UC3));
             cv::cvtColor(*img2, *grayImage2, CV_BGR2GRAY);
 
-            if( !img1 -> empty() && !img2 -> empty() )
+            if (!img1 -> empty() && !img2 -> empty())
             {
                 MatSharedPtr part;
-                cv::remap( *grayImage1, *img1r, *mx1, *my1, cv::INTER_LINEAR );
-                cv::remap( *grayImage2, *img2r, *mx2, *my2, cv::INTER_LINEAR );
+                cv::remap(*grayImage1, *img1r, *mx1, *my1, cv::INTER_LINEAR);
+                cv::remap(*grayImage2, *img2r, *mx2, *my2, cv::INTER_LINEAR);
                 part = MatSharedPtr(new cv::Mat(
                                 pair -> colRange(0, imageSize.width)));
-                cv::cvtColor( *img1r, *part, CV_GRAY2BGR );
+                cv::cvtColor(*img1r, *part, CV_GRAY2BGR);
                 part = MatSharedPtr(new cv::Mat(
-                                pair -> colRange(imageSize.width,
-                                                 imageSize.width*2)));
-                cv::cvtColor( *img2r, *part, CV_GRAY2BGR );
-                for( j = 0; j < imageSize.height; j += 16 )
-                    cv::line( *pair, cv::Point(0,j),
-                    cv::Point(imageSize.width*2,j),
-                    CV_RGB(0,255,0));
+                        pair -> colRange(imageSize.width, imageSize.width*2)));
+                cv::cvtColor(*img2r, *part, CV_GRAY2BGR);
+                for (int j = 0; j < imageSize.height; j += 16)
+                    cv::line(*pair, cv::Point(0, j),
+                             cv::Point(imageSize.width*2, j),
+                             CV_RGB(0, 255, 0));
                 DisplayManager::showImages(
                     {std::make_tuple("rectified", pair, 5000)});
             }
