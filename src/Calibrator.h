@@ -28,6 +28,8 @@ public:
 private:
     MatSharedPtr getNextImage() throw (ImageReadError);
 
+    void reinitCaptureIfNecessary() noexcept;
+
     void presentImagesWithTheirsUndistortedCopy();
     void showImageAndItsUndistortedCopy() const noexcept;
 
@@ -66,6 +68,9 @@ private:
     vector<vector<cv::Point3f>> _objectPoints;
 
     int _successes = 0;
+    int _framesSkip = 20;
+
+    bool _needReinitCapture = false;
 
     const std::string CALIBRATION_WINDOW_NAME = "Calibration";
     const std::string UNDISTORTED_WINDOW_NAME = "Undistort";
@@ -77,8 +82,6 @@ private:
     const int  PAUSE_TIME   = 250;
     const int  WAITING_TIME = 50;
     const int  SHOWING_TIME = 1;
-
-    const int BOARD_DT = 20;
 };
 
 

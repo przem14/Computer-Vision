@@ -20,6 +20,11 @@ public:
     int pointsOnBoardAmount() const noexcept { return _pointsOnBoardAmount; }
     const cv::Size& boardSize() const noexcept { return _boardSize; }
 
+    std::string captureSource() const noexcept { return _captureSource ; }
+
+    void setCaptureSource(const std::string& captureSource) noexcept
+    { _captureSource = captureSource; }
+
     const cv::Mat& intrinsic()  const noexcept { return _intrinsic;  } 
     const cv::Mat& distortion() const noexcept { return _distortion; }
 
@@ -48,6 +53,8 @@ private:
 
     int _pointsOnBoardAmount;
     cv::Size _boardSize;
+
+    std::string _captureSource;
 
     cv::Mat _intrinsic = cv::Mat(3, 3, CV_32FC1);
     cv::Mat _distortion = cv::Mat(5, 1, CV_32FC1);

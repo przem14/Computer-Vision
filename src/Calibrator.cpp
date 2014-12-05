@@ -28,6 +28,7 @@ void Calibrator::execute() noexcept
     _calibrationData.saveDistortionCoeffsWithYmlExtension(
             DISTORTION_COEFFS_OUTPUT_FILE);
 
+    reinitCaptureIfNecessary();
     presentImagesWithTheirsUndistortedCopy();
     cv::destroyAllWindows();
 }
@@ -73,16 +74,22 @@ void Calibrator::handleEscInterruption(char pressedKey)
     if(pressedKey == ESCAPE_KEY) throw InterruptedByUser();
 }
 
+void Calibrator::reinitCaptureIfNecessary() noexcept
+{
+    if(_needReinitCapture)
+        _capture = cv::VideoCapture(_calibrationData.captureSource());
+}
+
 void Calibrator::presentImagesWithTheirsUndistortedCopy()
 {
     char pressedKey = 0;
 
-    _image = getNextImage();
-    while(!_image -> empty() && pressedKey != ESCAPE_KEY)
+    while(pressedKey != ESCAPE_KEY)
     {
+        try{ _image = getNextImage(); }
+        catch(ImageReadError) { break; }
         showImageAndItsUndistortedCopy();
         pressedKey = handlePause();
-        _image = getNextImage();
     }
 }
 
@@ -120,6 +127,9 @@ void Calibrator::reinitCaptureFieldWithImagesPath(const std::string &path)
     noexcept
 {
     _capture = cv::VideoCapture(path);
+    _calibrationData.setCaptureSource(path);
+    _framesSkip = 1;
+    _needReinitCapture = true;
 }
 
 void Calibrator::showChessboardPointsWhenFounded()
@@ -214,7 +224,7 @@ void Calibrator::findAllCorners() noexcept
     {
         DisplayManager::showImages(
             {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, SHOWING_TIME)});
-        if(frame++ % BOARD_DT == 0)
+        if(frame++ % _framesSkip == 0)
         {
             findCornersOnImage();
             displayNumberOfSuccesses();
@@ -222,6 +232,7 @@ void Calibrator::findAllCorners() noexcept
 
         char pressedKey = handlePause();
         handleEscInterruption(pressedKey);
-        _image = getNextImage();
+        if(_successes < _calibrationData.imagesAmount())
+            _image = getNextImage();
     }
 }

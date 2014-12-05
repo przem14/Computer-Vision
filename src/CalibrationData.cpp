@@ -7,14 +7,15 @@ CalibrationData::CalibrationData(const int imagesAmount,
      _boardWidth(boardWidth),
      _boardHeight(boardHeight),
      _pointsOnBoardAmount(_boardWidth * _boardHeight),
-     _boardSize(cv::Size(_boardWidth, _boardHeight))
+     _boardSize(cv::Size(_boardWidth, _boardHeight)),
+     _captureSource("")
 {}
 
 void CalibrationData::saveIntrinsicMatrixWithYmlExtension(
         const std::string &path) const noexcept
 {
     cv::FileStorage fileStorage(path, cv::FileStorage::WRITE);
-    fileStorage << INTRINSIC_MATRIX_TITLE << _intrinsic;
+    fileStorage << INTRINSIC_MATRIX_TITLE  << _intrinsic;
     fileStorage.release();
 }
 
