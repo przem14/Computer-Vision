@@ -1,4 +1,6 @@
 #include "src/Calibrator.h"
+#include "src/StereoCalibrator.h"
+#include "src/DisplayManager.h"
 
 #include <iostream>
 
@@ -6,19 +8,24 @@ bool isNumberOfInputParametersCorrect(const int numberOfParameters);
 
 int main(int argc, char* argv[])
 {
-    if(!isNumberOfInputParametersCorrect(argc))
-    {
-        std::cerr << "ERROR: Wrong number of input parameters" << std::endl;
-        return -1;
-    }
+    std::string pathL = "imagesA\\images\\left\\image%02d.jpg";
+    std::string pathR = "imagesA\\images\\right\\image%02d.jpg";
 
-    int boardWidth   = atoi(argv[1]);
-    int boardHeight  = atoi(argv[2]);
-    int imagesAmount = atoi(argv[3]);
+    /*
+    Calibrator calibratorL(20, 9, 6);
+    calibratorL.reinitCaptureFieldWithImagesPath(pathL);
+    calibratorL.execute();
+    rename("intrinsic_matrix.yml", "intrinsic_matrixL.yml");
+    rename("distortion_coeffs.yml", "distortion_coeffsL.yml");
+    Calibrator calibratorR(20, 9, 6);
+    calibratorR.reinitCaptureFieldWithImagesPath(pathR);
+    calibratorR.execute();
+    rename("intrinsic_matrix.yml", "intrinsic_matrixR.yml");
+    rename("distortion_coeffs.yml", "distortion_coeffsR.yml");
+    */
 
-    Calibrator calibrator(imagesAmount, boardWidth, boardHeight);
-
-    calibrator.execute();
+    StereoCalibrator scalibrator(pathL, pathR, 9, 6);
+    scalibrator.execute();
 
     return 0;
 }

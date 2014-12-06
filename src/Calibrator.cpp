@@ -41,13 +41,14 @@ void Calibrator::calibrateCamera() noexcept
     intrinsic.at<float>(0,0) = 1.0f;
     intrinsic.at<float>(1,1) = 1.0f;
 
-    cv::calibrateCamera(_objectPoints,
-                        _imagePoints,
-                        _image -> size(),
-                        intrinsic,
-                        distortion,
-                        rotation,
-                        translation);
+    double error = cv::calibrateCamera(_objectPoints,
+                                       _imagePoints,
+                                       _image -> size(),
+                                       intrinsic,
+                                       distortion,
+                                       rotation,
+                                       translation);
+    std::cout << "\nErr<" << error << ">\n";
 
     _calibrationData.setIntrinsic(intrinsic);
     _calibrationData.setDistortion(distortion);
@@ -104,12 +105,12 @@ void Calibrator::showImageAndItsUndistortedCopy()
 
 MatSharedPtr Calibrator::createUndistortedImage() const noexcept
 {
-    MatSharedPtr undistortedImage = 
+    MatSharedPtr undistortedImage =
         MatSharedPtr(new cv::Mat(_image -> clone()));
 
-    cv::undistort(*_image, 
-                  *undistortedImage, 
-                  _calibrationData.intrinsic(), 
+    cv::undistort(*_image,
+                  *undistortedImage,
+                  _calibrationData.intrinsic(),
                   _calibrationData.distortion());
     return undistortedImage;
 }
@@ -136,9 +137,9 @@ void Calibrator::showChessboardPointsWhenFounded()
 {
     const bool isPatternFounded = true;
 
-    drawChessboardCorners(*_image, 
-                          _calibrationData.boardSize(), 
-                          _corners, 
+    drawChessboardCorners(*_image,
+                          _calibrationData.boardSize(),
+                          _corners,
                           isPatternFounded);
     DisplayManager::showImages(
             {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, 1)});
@@ -148,9 +149,9 @@ void Calibrator::showChessboardPointsWhenNotFounded()
 {
     const bool isPatternFounded = false;
 
-    drawChessboardCorners(*_image, 
-                          _calibrationData.boardSize(), 
-                          _corners, 
+    drawChessboardCorners(*_image,
+                          _calibrationData.boardSize(),
+                          _corners,
                           isPatternFounded);
     DisplayManager::showImages(
             {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, 1)});

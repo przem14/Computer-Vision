@@ -21,14 +21,18 @@ StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
 
 void StereoCalibrator::execute() noexcept
 {
+    loadSingleCalibrationResults("intrinsic_matrixL.yml",
+                                 "distortion_coeffsL.yml",
+                                 "intrinsic_matrixR.yml",
+                                 "distortion_coeffsR.yml");
+
     int useUncalibrated = 0;//defines which method of calibration use
 
     int displayCorners = 0;
     int showUndistorted = 1;
     const int maxScale = 1;
     const float squareSize = 1.f; //Set this to your actual square size
-    int lr, nframes, n = _boardWidth*_boardHeight, N = 0;
-    vector<std::string> imageNames[2];
+    int lr, nframes, n = _boardWidth*_boardHeight;
     vector<int> npoints;
     vector<uchar> active[2];
     vector<cv::Point2f> temp(n);
@@ -69,7 +73,7 @@ void StereoCalibrator::execute() noexcept
                         cv::CALIB_CB_ADAPTIVE_THRESH |
                         cv::CALIB_CB_NORMALIZE_IMAGE);
             if (result || s == maxScale)
-                for (int j = 0; j < temp.size(); j++)
+                for (unsigned j = 0; j < temp.size(); j++)
                 {
                     temp[j].x /= s;
                     temp[j].y /= s;
@@ -118,7 +122,6 @@ void StereoCalibrator::execute() noexcept
                 objectPoints[k][i*_boardWidth + j] =
                     cv::Point3f(i*squareSize, j*squareSize, 0);
     npoints.resize(nframes,n);
-    N = nframes*n;
 
     // CALIBRATE THE STEREO CAMERAS
     std::cout << "\nRunning stereo calibration ...";
@@ -131,9 +134,7 @@ void StereoCalibrator::execute() noexcept
             imageSize,
             _R, _T, _E, _F,
             cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
-            CV_CALIB_FIX_ASPECT_RATIO +
-            CV_CALIB_ZERO_TANGENT_DIST +
-            CV_CALIB_SAME_FOCAL_LENGTH);
+            CV_CALIB_FIX_INTRINSIC);
     std::cout << " done\n";
     std::cout << "\nErr<" << error << ">\n";
 
