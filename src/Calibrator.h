@@ -52,12 +52,12 @@ private:
     void saveImagePoints() noexcept;
 
     MatSharedPtr createGrayImage() noexcept;
-       
+
     void displayNumberOfSuccesses() noexcept;
 
 
 
-    cv::VideoCapture _capture = cv::VideoCapture(0);
+    cv::VideoCapture _capture;
     CalibrationData  _calibrationData;
 
     MatSharedPtr _image = nullptr;

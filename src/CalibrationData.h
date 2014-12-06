@@ -17,7 +17,7 @@ public:
     int boardWidth()   const noexcept { return _boardWidth; }
     int boardHeight()  const noexcept { return _boardHeight; }
 
-    int pointsOnBoardAmount() const noexcept { return _pointsOnBoardAmount; }
+    unsigned int pointsOnBoardAmount() const noexcept { return _pointsOnBoardAmount; }
     const cv::Size& boardSize() const noexcept { return _boardSize; }
 
     std::string captureSource() const noexcept { return _captureSource ; }

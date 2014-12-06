@@ -181,7 +181,7 @@ void Calibrator::getSubpixelAccuracy() noexcept
 
 void Calibrator::saveImagePoints() noexcept
 {
-    for(int j=0; j<_calibrationData.pointsOnBoardAmount(); j++)
+    for(unsigned int j=0; j<_calibrationData.pointsOnBoardAmount(); j++)
     {
         _imagePoints[_successes][j]    = _corners[j];
         _objectPoints[_successes][j].x = j / _calibrationData.boardWidth();

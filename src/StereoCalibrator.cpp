@@ -58,7 +58,7 @@ void StereoCalibrator::execute() noexcept
             break;
         imageSize = img -> size();
         //FIND CHESSBOARDS AND CORNERS THEREIN:
-        for (int s = 1; s <= maxScale; s++)
+        for (int s = 1; (s <= maxScale) && !result; s++)
         {
             MatSharedPtr timg = img;
             if (s > 1)
@@ -78,8 +78,6 @@ void StereoCalibrator::execute() noexcept
                     temp[j].x /= s;
                     temp[j].y /= s;
                 }
-            if (result)
-                break;
         }
 
         if (displayCorners)

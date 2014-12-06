@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
     std::string pathL = "imagesA\\images\\left\\image%02d.jpg";
     std::string pathR = "imagesA\\images\\right\\image%02d.jpg";
 
-    /*
+
     Calibrator calibratorL(20, 9, 6);
     calibratorL.reinitCaptureFieldWithImagesPath(pathL);
     calibratorL.execute();
@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
     calibratorR.execute();
     rename("intrinsic_matrix.yml", "intrinsic_matrixR.yml");
     rename("distortion_coeffs.yml", "distortion_coeffsR.yml");
-    */
+
 
     StereoCalibrator scalibrator(pathL, pathR, 9, 6);
     scalibrator.execute();
