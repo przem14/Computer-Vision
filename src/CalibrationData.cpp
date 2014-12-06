@@ -1,5 +1,10 @@
 #include "CalibrationData.h"
 
+const std::string CalibrationData::INTRINSIC_MATRIX_TITLE =
+                                                "Intrinsic Matrix";
+const std::string CalibrationData::DISTORTION_COEFFS_TITLE =
+                                                "Distortion Coefficients";
+
 CalibrationData::CalibrationData(const int imagesAmount,
                                  const int boardWidth,
                                  const int boardHeight) noexcept

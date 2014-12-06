@@ -25,10 +25,10 @@ public:
     void setCaptureSource(const std::string& captureSource) noexcept
     { _captureSource = captureSource; }
 
-    const cv::Mat& intrinsic()  const noexcept { return _intrinsic;  } 
+    const cv::Mat& intrinsic()  const noexcept { return _intrinsic;  }
     const cv::Mat& distortion() const noexcept { return _distortion; }
 
-    void setIntrinsic(const cv::Mat& intrinsic) noexcept 
+    void setIntrinsic(const cv::Mat& intrinsic) noexcept
     { _intrinsic = intrinsic; }
     void setDistortion(const cv::Mat& distortion) noexcept
     { _distortion = distortion; }
@@ -36,7 +36,7 @@ public:
     const vector<cv::Mat>& rotation() const noexcept { return _rotation; }
     const vector<cv::Mat>& translation() const noexcept { return _translation; }
 
-    void setRotation(const vector<cv::Mat> &rotation) noexcept 
+    void setRotation(const vector<cv::Mat> &rotation) noexcept
     { _rotation = rotation; }
     void setTranslation(const vector<cv::Mat> &translation) noexcept
     { _translation = translation; }
@@ -45,6 +45,9 @@ public:
         const noexcept;
     void saveDistortionCoeffsWithYmlExtension(const std::string &path)
         const noexcept;
+
+    static const std::string INTRINSIC_MATRIX_TITLE;
+    static const std::string DISTORTION_COEFFS_TITLE;
 
 private:
     int _imagesAmount;
@@ -61,9 +64,6 @@ private:
 
     vector<cv::Mat> _rotation;
     vector<cv::Mat> _translation;
-
-    const std::string INTRINSIC_MATRIX_TITLE = "Intrinsic Matrix";
-    const std::string DISTORTION_COEFFS_TITLE = "Distortion Coefficients";
 };
 
 #endif //CALIBRATIONDATA_H_

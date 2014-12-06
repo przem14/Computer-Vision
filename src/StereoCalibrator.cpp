@@ -1,5 +1,6 @@
 #include "StereoCalibrator.h"
 #include "DisplayManager.h"
+#include "CalibrationData.h"
 
 StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
                                    const std::string imagesRight,
@@ -12,6 +13,10 @@ StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
      _boardWidth(boardWidth),
      _boardHeight(boardHeight)
 {
+    cv::setIdentity(_intrinsicLeft);
+    cv::setIdentity(_intrinsicRight);
+    _distortionLeft.setTo(cv::Scalar::all(0));
+    _distortionRight.setTo(cv::Scalar::all(0));
 }
 
 void StereoCalibrator::execute() noexcept
@@ -114,14 +119,11 @@ void StereoCalibrator::execute() noexcept
                     cv::Point3f(i*squareSize, j*squareSize, 0);
     npoints.resize(nframes,n);
     N = nframes*n;
-    cv::setIdentity(_intrinsicLeft);
-    cv::setIdentity(_intrinsicRight);
-    _distortionLeft.setTo(cv::Scalar::all(0));
-    _distortionRight.setTo(cv::Scalar::all(0));
+
     // CALIBRATE THE STEREO CAMERAS
     std::cout << "\nRunning stereo calibration ...";
     std::fflush(stdout);
-    cv::stereoCalibrate(
+    double error = cv::stereoCalibrate(
             objectPoints,
             _points[0],
             _points[1],
@@ -129,10 +131,13 @@ void StereoCalibrator::execute() noexcept
             imageSize,
             _R, _T, _E, _F,
             cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
-            cv::CALIB_FIX_ASPECT_RATIO +
-            cv::CALIB_ZERO_TANGENT_DIST +
-            cv::CALIB_SAME_FOCAL_LENGTH);
+            CV_CALIB_FIX_ASPECT_RATIO +
+            CV_CALIB_ZERO_TANGENT_DIST +
+            CV_CALIB_SAME_FOCAL_LENGTH);
     std::cout << " done\n";
+    std::cout << "\nErr<" << error << ">\n";
+
+    showCalibrationError(_F, nframes);
 
     //COMPUTE AND DISPLAY RECTIFICATION
     if (showUndistorted)
@@ -159,7 +164,7 @@ void StereoCalibrator::execute() noexcept
                     _distortionRight,
                     imageSize,
                     _R, _T, _R1, _R2, _P1, _P2, _Q,
-                    cv::CALIB_ZERO_DISPARITY );
+                    cv::CALIB_ZERO_DISPARITY);
             //Precompute maps for cvRemap()
             cv::initUndistortRectifyMap(
                     _intrinsicLeft,
@@ -264,6 +269,27 @@ void StereoCalibrator::execute() noexcept
         }
     }
 };
+
+void StereoCalibrator::loadSingleCalibrationResults(
+                                      const std::string intrinsicL,
+                                      const std::string distortionL,
+                                      const std::string intrinsicR,
+                                      const std::string distortionR) noexcept
+{
+    cv::FileStorage fileStorage(intrinsicL, cv::FileStorage::READ);
+    fileStorage[CalibrationData::INTRINSIC_MATRIX_TITLE] >> _intrinsicLeft;
+
+    fileStorage.open(distortionL, cv::FileStorage::READ);
+    fileStorage[CalibrationData::DISTORTION_COEFFS_TITLE] >> _distortionLeft;
+
+    fileStorage.open(intrinsicR, cv::FileStorage::READ);
+    fileStorage[CalibrationData::INTRINSIC_MATRIX_TITLE] >> _intrinsicRight;
+
+    fileStorage.open(distortionR, cv::FileStorage::READ);
+    fileStorage[CalibrationData::DISTORTION_COEFFS_TITLE] >> _distortionRight;
+
+    fileStorage.release();
+}
 
 double StereoCalibrator::computeCalibrationError(cv::Mat _F, int nframes) noexcept
 {

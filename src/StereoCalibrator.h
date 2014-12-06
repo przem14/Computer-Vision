@@ -21,11 +21,16 @@ public:
                      int boardHeight) noexcept;
 
     void execute() noexcept;
-    double computeCalibrationError(cv::Mat _F, int nframes) noexcept;
-    void showCalibrationError(cv::Mat _F, int nframes) noexcept;
 
 
 private:
+    double computeCalibrationError(cv::Mat _F, int nframes) noexcept;
+    void showCalibrationError(cv::Mat _F, int nframes) noexcept;
+    void loadSingleCalibrationResults(const std::string intrinsicL,
+                                      const std::string distortionL,
+                                      const std::string intrinsicR,
+                                      const std::string distortionR) noexcept;
+
     cv::Mat _intrinsicLeft = cv::Mat(3, 3, CV_32FC1);
     cv::Mat _distortionLeft = cv::Mat(5, 1, CV_32FC1);
     cv::Mat _intrinsicRight = cv::Mat(3, 3, CV_32FC1);
