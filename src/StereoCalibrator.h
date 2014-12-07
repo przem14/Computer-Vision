@@ -1,7 +1,7 @@
 #ifndef STEREOCALIBRATOR_H
 #define STEREOCALIBRATOR_H
 
-#include "StereoCalibrationData.h"
+#include "CalibrationData.h"
 #include "DisplayManager.h"
 #include "CommonExceptions.h"
 
@@ -34,40 +34,36 @@ private:
                                       const std::string distortionL,
                                       const std::string intrinsicR,
                                       const std::string distortionR) noexcept;
-    void saveCalibrationResults() const noexcept;
-
     void precomputeMapForRemap(cv::Size imageSize,
-                               MatSharedPtr mx1, MatSharedPtr my1,
-                               MatSharedPtr mx2, MatSharedPtr my2);
+                                     MatSharedPtr mx1, MatSharedPtr my1,
+                                     MatSharedPtr mx2, MatSharedPtr my2,
+                                     cv::Mat _R1, cv::Mat _R2,
+                                     cv::Mat _P1, cv::Mat _P2);
     void bouguetsMethod(cv::Size imageSize,
                         MatSharedPtr mx1, MatSharedPtr my1,
-                        MatSharedPtr mx2, MatSharedPtr my2);
+                        MatSharedPtr mx2, MatSharedPtr my2,
+                        cv::Mat _R, cv::Mat _T,
+                        cv::Mat _R1, cv::Mat _R2);
     void hartleysMethod(cv::Size imageSize, int useUncalibrated,
                         MatSharedPtr mx1, MatSharedPtr my1,
-                        MatSharedPtr mx2, MatSharedPtr my2);
+                        MatSharedPtr mx2, MatSharedPtr my2,
+                        cv::Mat _F, cv::Mat _R1, cv::Mat _R2);
 
-    double computeCalibrationError() noexcept;
-    void showCalibrationError() noexcept;
+    double computeCalibrationError(cv::Mat _F) noexcept;
+    void showCalibrationError(cv::Mat _F) noexcept;
 
     std::string _imagesLeft;
     std::string _imagesRight;
     cv::VideoCapture _captureLeft;
     cv::VideoCapture _captureRight;
-    StereoCalibrationData _calibrationData;
+    CalibrationData _calibrationData;
 
     vector<vector<cv::Point2f>> _points[2];
     vector<vector<cv::Point3f>> _objectPoints;
 
     const int LEFT  = 0;
     const int RIGHT = 1;
-
-    const std::string STEREO_ROTATION_OUTPUT_FILE = "stereo_rotation.yml";
-    const std::string STEREO_TRANSLATION_OUTPUT_FILE = "stereo_translation.yml";
-    const std::string ESSENTIAL_MATRIX_OUTPUT_FILE = "essential_matrix.yml";
-    const std::string FUNDAMENTAL_MATRIX_OUTPUT_FILE = "fundamental_matrix.yml";
-    const std::string RECT_TRANSFORMS_OUTPUT_FILE = "rect_transforms.yml";
-    const std::string PROJECTION_MATRICES_OUTPUT_FILE = "projection_matrices.yml";
-    const std::string D2D_MAPPING_MATRIX_OUTPUT_FILE = "d2d_mapping_matrix.yml";
 };
 
 #endif // STEREOCALIBRATOR_H
+
