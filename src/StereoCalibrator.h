@@ -21,6 +21,8 @@ public:
                      int boardHeight) noexcept;
 
     void execute() noexcept;
+    void bouguetsMethod(cv::Size imageSize, MatSharedPtr mx1, MatSharedPtr my1, MatSharedPtr mx2, MatSharedPtr my2,
+                                      cv::Mat _R, cv::Mat _T, cv::Mat _R1, cv::Mat _R2);
 
 
 private:

@@ -19,6 +19,37 @@ StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
     _distortionRight.setTo(cv::Scalar::all(0));
 }
 
+void StereoCalibrator::bouguetsMethod(cv::Size imageSize, MatSharedPtr mx1, MatSharedPtr my1, MatSharedPtr mx2, MatSharedPtr my2,
+                                      cv::Mat _R, cv::Mat _T, cv::Mat _R1, cv::Mat _R2)
+{
+    cv::Mat _P1(3, 4, CV_32FC1);
+    cv::Mat _P2(3, 4, CV_32FC1);
+    cv::Mat _Q(3, 4, CV_32FC1);
+    cv::stereoRectify(
+        _intrinsicLeft,
+        _distortionLeft,
+        _intrinsicRight,
+        _distortionRight,
+        imageSize,
+        _R, _T, _R1, _R2, _P1, _P2, _Q,
+        cv::CALIB_ZERO_DISPARITY);
+    //Precompute maps for cvRemap()
+    cv::initUndistortRectifyMap(
+        _intrinsicLeft,
+        _distortionLeft,
+        _R1, _P1,
+        imageSize,
+        CV_32F,
+        *mx1, *my1);
+    cv::initUndistortRectifyMap(
+        _intrinsicRight,
+        _distortionRight,
+        _R2, _P2,
+        imageSize,
+        CV_32F,
+        *mx2, *my2);
+}
+
 void StereoCalibrator::execute() noexcept
 {
     loadSingleCalibrationResults("intrinsic_matrixL.yml",
@@ -79,7 +110,6 @@ void StereoCalibrator::execute() noexcept
                     temp[j].y /= s;
                 }
         }
-
         if (displayCorners)
         {
             MatSharedPtr cimg(new cv::Mat(imageSize, 8, 3));
@@ -150,36 +180,9 @@ void StereoCalibrator::execute() noexcept
         MatSharedPtr pair;
         cv::Mat _R1(3, 3, CV_32FC1);
         cv::Mat _R2(3, 3, CV_32FC1);
-        // IF BY CALIBRATED (BOUGUET'S METHOD)
+
         if (useUncalibrated == 0)
-        {
-            cv::Mat _P1(3, 4, CV_32FC1);
-            cv::Mat _P2(3, 4, CV_32FC1);
-            cv::Mat _Q(3, 4, CV_32FC1);
-            cv::stereoRectify(
-                    _intrinsicLeft,
-                    _distortionLeft,
-                    _intrinsicRight,
-                    _distortionRight,
-                    imageSize,
-                    _R, _T, _R1, _R2, _P1, _P2, _Q,
-                    cv::CALIB_ZERO_DISPARITY);
-            //Precompute maps for cvRemap()
-            cv::initUndistortRectifyMap(
-                    _intrinsicLeft,
-                    _distortionLeft,
-                    _R1, _P1,
-                    imageSize,
-                    CV_32F,
-                    *mx1, *my1);
-            cv::initUndistortRectifyMap(
-                    _intrinsicRight,
-                    _distortionRight,
-                    _R2, _P2,
-                    imageSize,
-                    CV_32F,
-                    *mx2, *my2);
-        }
+            bouguetsMethod(imageSize, mx1, my1, mx2, my2, _R, _T, _R1, _R2);
         //OR ELSE HARTLEY'S METHOD
         else if (useUncalibrated == 1 || useUncalibrated == 2)
         // use intrinsic parameters of each camera, but
