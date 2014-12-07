@@ -27,7 +27,7 @@ void StereoCalibrator::execute() noexcept
                                  "distortion_coeffsR.yml");
 
     int useUncalibrated = 0;//defines which method of calibration use
-
+    float resizeFactor = 0.625;
     int displayCorners = 0;
     int showUndistorted = 1;
     const int maxScale = 1;
@@ -230,7 +230,7 @@ void StereoCalibrator::execute() noexcept
         else
             assert(0);
         // RECTIFY THE IMAGES
-        pair = MatSharedPtr(new cv::Mat(imageSize.height, imageSize.width*2,
+        pair = MatSharedPtr(new cv::Mat(imageSize.height*resizeFactor, imageSize.width*2*resizeFactor,
                                         CV_8UC3));
         _captureLeft.open(_imagesLeft);
         _captureRight.open(_imagesRight);
@@ -249,18 +249,26 @@ void StereoCalibrator::execute() noexcept
 
             if (!img1 -> empty() && !img2 -> empty())
             {
-                MatSharedPtr part;
+                MatSharedPtr part, resized1 = img1r, resized2 = img2r;
                 cv::remap(*grayImage1, *img1r, *mx1, *my1, cv::INTER_LINEAR);
                 cv::remap(*grayImage2, *img2r, *mx2, *my2, cv::INTER_LINEAR);
+                cv::resize(*img1r,
+                           *resized1,
+                           cv::Size(imageSize.width * resizeFactor, imageSize.height * resizeFactor),
+                           cv::INTER_AREA);
+                cv::resize(*img2r,
+                           *resized2,
+                           cv::Size(imageSize.width * resizeFactor, imageSize.height * resizeFactor),
+                           cv::INTER_AREA);
                 part = MatSharedPtr(new cv::Mat(
-                                pair -> colRange(0, imageSize.width)));
-                cv::cvtColor(*img1r, *part, CV_GRAY2BGR);
+                                pair -> colRange(0, imageSize.width*resizeFactor)));
+                cv::cvtColor(*resized1, *part, CV_GRAY2BGR);
                 part = MatSharedPtr(new cv::Mat(
-                        pair -> colRange(imageSize.width, imageSize.width*2)));
-                cv::cvtColor(*img2r, *part, CV_GRAY2BGR);
-                for (int j = 0; j < imageSize.height; j += 16)
+                        pair -> colRange(imageSize.width*resizeFactor, imageSize.width*2*resizeFactor)));
+                cv::cvtColor(*resized2, *part, CV_GRAY2BGR);
+                for (int j = 0; j < imageSize.height * resizeFactor; j += 16*resizeFactor)
                     cv::line(*pair, cv::Point(0, j),
-                             cv::Point(imageSize.width*2, j),
+                             cv::Point(imageSize.width*2*resizeFactor, j),
                              CV_RGB(0, 255, 0));
                 DisplayManager::showImages(
                     {std::make_tuple("rectified", pair, 5000)});
