@@ -50,7 +50,7 @@ public:
     void loadIntrinsicMatrix(const std::string &path, int index) noexcept;
     void loadDistortionCoeffs(const std::string &path, int index) noexcept;
 
-private:
+protected:
     int _imagesAmount;
     int _boardWidth;
     int _boardHeight;
@@ -61,14 +61,12 @@ private:
     vector<cv::Mat> _intrinsics;
     vector<cv::Mat> _distortions;
 
-    vector<cv::Mat> _rotation;
-    vector<cv::Mat> _translation;
-    //cv::Mat _r = cv::Mat(1, 1, CV_32FC1);
-    //cv::Mat _t = cv::Mat(1, 1, CV_32FC1);
-    //cv::Mat _n = cv::Mat(1, 1, CV_32FC1);
-
     const std::string INTRINSIC_MATRIX_TITLE = "Intrinsic Matrix";
     const std::string DISTORTION_COEFFS_TITLE = "Distortion Coefficients";
+
+private:
+    vector<cv::Mat> _rotation;
+    vector<cv::Mat> _translation;
 };
 
 #endif //CALIBRATIONDATA_H_
