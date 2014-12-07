@@ -1,5 +1,8 @@
 #include "src/Calibrator.h"
 #include "src/StereoCalibrator.h"
+#include "src/DisplayManager.h"
+
+#include <iostream>
 
 bool isNumberOfInputParametersCorrect(const int numberOfParameters);
 

@@ -21,4 +21,13 @@ public:
     }
 };
 
+class FramesAmountMatchError : public std::exception
+{
+public:
+    virtual const char* what() const noexcept
+    {
+        return "Liczba klatek na urzadzeniach nie zgadza sie";
+    }
+};
+
 #endif /* CALIBRATIONEXCEPTIONS_H_ */

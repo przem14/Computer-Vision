@@ -58,6 +58,7 @@ private:
 
 
     cv::VideoCapture _capture;
+    std::string _captureSource = "";
     CalibrationData  _calibrationData;
 
     MatSharedPtr _image = nullptr;

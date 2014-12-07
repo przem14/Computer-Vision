@@ -4,19 +4,25 @@
 
 StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
                                    const std::string imagesRight,
-                                   int boardWidth,
-                                   int boardHeight) noexcept
+                                   int boardWidth, int boardHeight)
+                                            throw (FramesAmountMatchError)
     :_imagesLeft(imagesLeft),
      _imagesRight(imagesRight),
      _captureLeft(imagesLeft),
      _captureRight(imagesRight),
-     _boardWidth(boardWidth),
-     _boardHeight(boardHeight)
+     _calibrationData(
+              _captureLeft.get(CV_CAP_PROP_FRAME_COUNT),
+              boardWidth, boardHeight),
+     _objectPoints(
+              _calibrationData.imagesAmount(),
+              vector<cv::Point3f>(_calibrationData.pointsOnBoardAmount()))
 {
-    cv::setIdentity(_intrinsicLeft);
-    cv::setIdentity(_intrinsicRight);
-    _distortionLeft.setTo(cv::Scalar::all(0));
-    _distortionRight.setTo(cv::Scalar::all(0));
+    int leftFramesAmount = _captureLeft.get(CV_CAP_PROP_FRAME_COUNT);
+    int rightFramesAmount = _captureRight.get(CV_CAP_PROP_FRAME_COUNT);
+    if (leftFramesAmount == rightFramesAmount)
+        initIntrinsicsAndDistortions();
+    else
+        throw FramesAmountMatchError();
 }
 
 void StereoCalibrator::bouguetsMethod(cv::Size imageSize, MatSharedPtr mx1, MatSharedPtr my1, MatSharedPtr mx2, MatSharedPtr my2,
@@ -26,28 +32,16 @@ void StereoCalibrator::bouguetsMethod(cv::Size imageSize, MatSharedPtr mx1, MatS
     cv::Mat _P2(3, 4, CV_32FC1);
     cv::Mat _Q(3, 4, CV_32FC1);
     cv::stereoRectify(
-        _intrinsicLeft,
-        _distortionLeft,
-        _intrinsicRight,
-        _distortionRight,
-        imageSize,
-        _R, _T, _R1, _R2, _P1, _P2, _Q,
-        cv::CALIB_ZERO_DISPARITY);
-    //Precompute maps for cvRemap()
+        _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
+        _calibrationData.intrinsic(RIGHT), _calibrationData.distortion(RIGHT),
+        imageSize, _R, _T, _R1, _R2, _P1, _P2, _Q, cv::CALIB_ZERO_DISPARITY);
+
     cv::initUndistortRectifyMap(
-        _intrinsicLeft,
-        _distortionLeft,
-        _R1, _P1,
-        imageSize,
-        CV_32F,
-        *mx1, *my1);
+        _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
+        _R1, _P1, imageSize, CV_32F, *mx1, *my1);
     cv::initUndistortRectifyMap(
-        _intrinsicRight,
-        _distortionRight,
-        _R2, _P2,
-        imageSize,
-        CV_32F,
-        *mx2, *my2);
+        _calibrationData.intrinsic(RIGHT), _calibrationData.distortion(RIGHT),
+        _R2, _P2, imageSize, CV_32F, *mx2, *my2);
 }
 
 void StereoCalibrator::execute() noexcept
@@ -63,10 +57,9 @@ void StereoCalibrator::execute() noexcept
     int showUndistorted = 1;
     const int maxScale = 1;
     const float squareSize = 1.f; //Set this to your actual square size
-    int lr, nframes, n = _boardWidth*_boardHeight;
-    vector<int> npoints;
+    int lr;
     vector<uchar> active[2];
-    vector<cv::Point2f> temp(n);
+    vector<cv::Point2f> temp(_calibrationData.pointsOnBoardAmount());
     cv::Size imageSize(0, 0);
     // ARRAY AND VECTOR STORAGE:
     cv::Mat _R(3, 3, CV_32FC1);
@@ -99,7 +92,7 @@ void StereoCalibrator::execute() noexcept
                            cv::INTER_CUBIC);
             result = findChessboardCorners(
                         *timg,
-                        cv::Size(_boardWidth, _boardHeight),
+                        _calibrationData.boardSize(),
                         temp,
                         cv::CALIB_CB_ADAPTIVE_THRESH |
                         cv::CALIB_CB_NORMALIZE_IMAGE);
@@ -116,7 +109,7 @@ void StereoCalibrator::execute() noexcept
             cv::cvtColor(*img, *cimg, CV_GRAY2BGR);
             cv::drawChessboardCorners(
                     *cimg,
-                    cv::Size(_boardWidth, _boardHeight),
+                    _calibrationData.boardSize(),
                     temp,
                     result);
             DisplayManager::showImages(
@@ -141,32 +134,27 @@ void StereoCalibrator::execute() noexcept
         }
     }
     // HARVEST CHESSBOARD 3D OBJECT POINT LIST:
-    nframes = active[0].size();//Number of good chessboads found
-    vector<vector<cv::Point3f>> objectPoints(nframes, vector<cv::Point3f>(n));
 
-    for (int k = 0; k < nframes; k++)
-        for (int i = 0; i < _boardHeight; i++)
-            for (int j = 0; j < _boardWidth; j++)
-                objectPoints[k][i*_boardWidth + j] =
+    for (int k = 0; k < _calibrationData.imagesAmount(); k++)
+        for (int i = 0; i < _calibrationData.boardHeight(); i++)
+            for (int j = 0; j < _calibrationData.boardWidth(); j++)
+                _objectPoints[k][i*_calibrationData.boardWidth() + j] =
                     cv::Point3f(i*squareSize, j*squareSize, 0);
-    npoints.resize(nframes,n);
 
     // CALIBRATE THE STEREO CAMERAS
     std::cout << "\nRunning stereo calibration ...";
     std::fflush(stdout);
     double error = cv::stereoCalibrate(
-            objectPoints,
-            _points[0],
-            _points[1],
-            _intrinsicLeft, _distortionLeft, _intrinsicRight, _distortionRight,
-            imageSize,
-            _R, _T, _E, _F,
-            cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
-            CV_CALIB_FIX_INTRINSIC);
+        _objectPoints, _points[LEFT], _points[RIGHT],
+        _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
+        _calibrationData.intrinsic(RIGHT), _calibrationData.distortion(RIGHT),
+        imageSize, _R, _T, _E, _F,
+        cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
+        CV_CALIB_FIX_INTRINSIC);
     std::cout << " done\n";
     std::cout << "\nErr<" << error << ">\n";
 
-    showCalibrationError(_F, nframes);
+    showCalibrationError(_F);
 
     //COMPUTE AND DISPLAY RECTIFICATION
     if (showUndistorted)
@@ -196,7 +184,7 @@ void StereoCalibrator::execute() noexcept
             vector<cv::Point2f> allImagesPoints[2];
             for (int i = 0; i < 2; i++)
             {
-                for (int j = 0; j < nframes; j++)
+                for (int j = 0; j < _calibrationData.imagesAmount(); j++)
                     std::copy(_points[i][j].begin(),
                               _points[i][j].end(),
                               back_inserter(allImagesPoints[i]));
@@ -210,25 +198,21 @@ void StereoCalibrator::execute() noexcept
                     _F,
                     imageSize,
                     _H1, _H2, 3);
-            _R1 = _intrinsicLeft.inv() * _H1 * _intrinsicLeft;
-            _R2 = _intrinsicRight.inv() * _H2 * _intrinsicRight;
+            _R1 = _calibrationData.intrinsic(LEFT).inv() *
+                    _H1 * _calibrationData.intrinsic(LEFT);
+            _R2 = _calibrationData.intrinsic(RIGHT).inv() *
+                    _H2 * _calibrationData.intrinsic(RIGHT);
             //Precompute map for cvRemap()
             cv::initUndistortRectifyMap(
-                    _intrinsicLeft,
-                    _distortionLeft,
-                    _R1,
-                    _intrinsicLeft,
-                    imageSize,
-                    CV_32F,
-                    *mx1, *my1);
+                _calibrationData.intrinsic(LEFT),
+                _calibrationData.distortion(LEFT),
+                _R1, _calibrationData.intrinsic(LEFT),
+                imageSize, CV_32F, *mx1, *my1);
             cv::initUndistortRectifyMap(
-                    _intrinsicRight,
-                    _distortionLeft,
-                    _R2,
-                    _intrinsicRight,
-                    imageSize,
-                    CV_32F,
-                    *mx2, *my2);
+                _calibrationData.intrinsic(RIGHT),
+                _calibrationData.distortion(RIGHT),
+                _R2, _calibrationData.intrinsic(RIGHT),
+                imageSize, CV_32F, *mx2, *my2);
         }
         else
             assert(0);
@@ -237,7 +221,7 @@ void StereoCalibrator::execute() noexcept
                                         CV_8UC3));
         _captureLeft.open(_imagesLeft);
         _captureRight.open(_imagesRight);
-        for (int i = 0; i < nframes; i++)
+        for (int i = 0; i < _calibrationData.imagesAmount(); i++)
         {
             MatSharedPtr img1 = MatSharedPtr(new cv::Mat());
             MatSharedPtr img2 = MatSharedPtr(new cv::Mat());
@@ -278,7 +262,18 @@ void StereoCalibrator::execute() noexcept
             }
         }
     }
-};
+}
+
+void StereoCalibrator::initIntrinsicsAndDistortions() noexcept
+{
+    for(int i = 0; i < 2; i++)
+    {
+        _calibrationData.addIntrinsic(cv::Mat(3, 3, CV_32FC1));
+        cv::setIdentity(_calibrationData.intrinsic(i));
+        cv::Mat zeroMatrix = cv::Mat(5, 1, CV_32FC1).setTo(cv::Scalar::all(0));
+        _calibrationData.addDistortion(zeroMatrix);
+    }
+}
 
 void StereoCalibrator::loadSingleCalibrationResults(
                                       const std::string intrinsicL,
@@ -286,57 +281,49 @@ void StereoCalibrator::loadSingleCalibrationResults(
                                       const std::string intrinsicR,
                                       const std::string distortionR) noexcept
 {
-    cv::FileStorage fileStorage(intrinsicL, cv::FileStorage::READ);
-    fileStorage[CalibrationData::INTRINSIC_MATRIX_TITLE] >> _intrinsicLeft;
-
-    fileStorage.open(distortionL, cv::FileStorage::READ);
-    fileStorage[CalibrationData::DISTORTION_COEFFS_TITLE] >> _distortionLeft;
-
-    fileStorage.open(intrinsicR, cv::FileStorage::READ);
-    fileStorage[CalibrationData::INTRINSIC_MATRIX_TITLE] >> _intrinsicRight;
-
-    fileStorage.open(distortionR, cv::FileStorage::READ);
-    fileStorage[CalibrationData::DISTORTION_COEFFS_TITLE] >> _distortionRight;
-
-    fileStorage.release();
+    _calibrationData.loadIntrinsicMatrix(intrinsicL, LEFT);
+    _calibrationData.loadDistortionCoeffs(distortionL, LEFT);
+    _calibrationData.loadIntrinsicMatrix(intrinsicR, RIGHT);
+    _calibrationData.loadDistortionCoeffs(distortionR, RIGHT);
 }
 
-double StereoCalibrator::computeCalibrationError(cv::Mat _F, int nframes) noexcept
+double StereoCalibrator::computeCalibrationError(cv::Mat _F) noexcept
 {
     vector<cv::Point3f> lines[2];
-    int n = _boardWidth * _boardHeight;
 
     double avgErr = 0;
-    for (int i = 0; i < nframes; i++ )
+    for (int i = 0; i < _calibrationData.imagesAmount(); i++ )
     {
-        cv::undistortPoints(_points[0][i],
-                            _points[0][i],
-                            _intrinsicLeft,
-                            _distortionLeft,
+        cv::undistortPoints(_points[LEFT][i],
+                            _points[LEFT][i],
+                            _calibrationData.intrinsic(LEFT),
+                            _calibrationData.distortion(LEFT),
                             cv::noArray(),
-                            _intrinsicLeft);
-        cv::undistortPoints(_points[1][i],
-                            _points[1][i],
-                            _intrinsicRight,
-                            _distortionRight,
+                            _calibrationData.intrinsic(LEFT));
+        cv::undistortPoints(_points[RIGHT][i],
+                            _points[RIGHT][i],
+                            _calibrationData.intrinsic(RIGHT),
+                            _calibrationData.distortion(RIGHT),
                             cv::noArray(),
-                            _intrinsicRight);
-        cv::computeCorrespondEpilines(_points[0][i], 1, _F, lines[0]);
-        cv::computeCorrespondEpilines(_points[1][i], 2, _F, lines[1]);
-        for (int j = 0; j < n; j++)
+                            _calibrationData.intrinsic(RIGHT));
+        cv::computeCorrespondEpilines(_points[LEFT][i], 1, _F, lines[LEFT]);
+        cv::computeCorrespondEpilines(_points[RIGHT][i], 2, _F, lines[RIGHT]);
+        for (unsigned j = 0; j < _calibrationData.pointsOnBoardAmount(); j++)
         {
-            double err = std::abs(_points[0][i][j].x*lines[1][j].x +
-                _points[0][i][j].y*lines[1][j].y + lines[1][j].z)
-                + std::abs(_points[1][i][j].x*lines[0][j].x +
-                _points[1][i][j].y*lines[0][j].y + lines[0][j].z);
+            double err = std::abs(_points[LEFT][i][j].x*lines[RIGHT][j].x +
+                _points[LEFT][i][j].y*lines[RIGHT][j].y + lines[RIGHT][j].z)
+                + std::abs(_points[RIGHT][i][j].x*lines[LEFT][j].x +
+                _points[RIGHT][i][j].y*lines[LEFT][j].y + lines[LEFT][j].z);
             avgErr += err;
         }
     }
-    return avgErr / (nframes*n);
+    int totalPointsAmount = _calibrationData.imagesAmount() *
+                            _calibrationData.pointsOnBoardAmount();
+    return avgErr / totalPointsAmount;
 }
 
-void StereoCalibrator::showCalibrationError(cv::Mat _F, int nframes) noexcept
+void StereoCalibrator::showCalibrationError(cv::Mat _F) noexcept
 {
-    double err = computeCalibrationError(_F, nframes);
+    double err = computeCalibrationError(_F);
     std::cout << "Average calibration error: " << err << "\n";
 }

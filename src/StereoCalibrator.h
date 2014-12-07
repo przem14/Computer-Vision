@@ -1,9 +1,14 @@
 #ifndef STEREOCALIBRATOR_H
 #define STEREOCALIBRATOR_H
 
+#include "CalibrationData.h"
+#include "DisplayManager.h"
+#include "CommonExceptions.h"
+
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -18,7 +23,7 @@ public:
     StereoCalibrator(const std::string imagesLeft,
                      const std::string imagesRight,
                      int boardWidth,
-                     int boardHeight) noexcept;
+                     int boardHeight) throw (FramesAmountMatchError);
 
     void execute() noexcept;
     void bouguetsMethod(cv::Size imageSize, MatSharedPtr mx1, MatSharedPtr my1, MatSharedPtr mx2, MatSharedPtr my2,
@@ -26,25 +31,27 @@ public:
 
 
 private:
-    double computeCalibrationError(cv::Mat _F, int nframes) noexcept;
-    void showCalibrationError(cv::Mat _F, int nframes) noexcept;
+    void initIntrinsicsAndDistortions() noexcept;
+
     void loadSingleCalibrationResults(const std::string intrinsicL,
                                       const std::string distortionL,
                                       const std::string intrinsicR,
                                       const std::string distortionR) noexcept;
 
-    cv::Mat _intrinsicLeft = cv::Mat(3, 3, CV_32FC1);
-    cv::Mat _distortionLeft = cv::Mat(5, 1, CV_32FC1);
-    cv::Mat _intrinsicRight = cv::Mat(3, 3, CV_32FC1);
-    cv::Mat _distortionRight = cv::Mat(5, 1, CV_32FC1);
+    double computeCalibrationError(cv::Mat _F) noexcept;
+    void showCalibrationError(cv::Mat _F) noexcept;
 
-    vector<vector<cv::Point2f>> _points[2];
     std::string _imagesLeft;
     std::string _imagesRight;
     cv::VideoCapture _captureLeft;
     cv::VideoCapture _captureRight;
-    int _boardWidth;
-    int _boardHeight;
+    CalibrationData _calibrationData;
+
+    vector<vector<cv::Point2f>> _points[2];
+    vector<vector<cv::Point3f>> _objectPoints;
+
+    const int LEFT  = 0;
+    const int RIGHT = 1;
 };
 
 #endif // STEREOCALIBRATOR_H

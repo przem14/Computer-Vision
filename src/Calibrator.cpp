@@ -24,9 +24,9 @@ void Calibrator::execute() noexcept
     calibrateCamera();
 
     _calibrationData.saveIntrinsicMatrixWithYmlExtension(
-            INTRINSIC_MATRIX_OUTPUT_FILE);
+            INTRINSIC_MATRIX_OUTPUT_FILE, 0);
     _calibrationData.saveDistortionCoeffsWithYmlExtension(
-            DISTORTION_COEFFS_OUTPUT_FILE);
+            DISTORTION_COEFFS_OUTPUT_FILE, 0);
 
     reinitCaptureIfNecessary();
     presentImagesWithTheirsUndistortedCopy();
@@ -50,8 +50,8 @@ void Calibrator::calibrateCamera() noexcept
                                        translation);
     std::cout << "\nErr<" << error << ">\n";
 
-    _calibrationData.setIntrinsic(intrinsic);
-    _calibrationData.setDistortion(distortion);
+    _calibrationData.addIntrinsic(intrinsic);
+    _calibrationData.addDistortion(distortion);
     _calibrationData.setRotation(rotation);
     _calibrationData.setTranslation(translation);
 }
@@ -78,7 +78,7 @@ void Calibrator::handleEscInterruption(char pressedKey)
 void Calibrator::reinitCaptureIfNecessary() noexcept
 {
     if(_needReinitCapture)
-        _capture = cv::VideoCapture(_calibrationData.captureSource());
+        _capture = cv::VideoCapture(_captureSource);
 }
 
 void Calibrator::presentImagesWithTheirsUndistortedCopy()
@@ -110,8 +110,8 @@ MatSharedPtr Calibrator::createUndistortedImage() const noexcept
 
     cv::undistort(*_image,
                   *undistortedImage,
-                  _calibrationData.intrinsic(),
-                  _calibrationData.distortion());
+                  _calibrationData.intrinsic(0),
+                  _calibrationData.distortion(0));
     return undistortedImage;
 }
 
@@ -128,7 +128,7 @@ void Calibrator::reinitCaptureFieldWithImagesPath(const std::string &path)
     noexcept
 {
     _capture = cv::VideoCapture(path);
-    _calibrationData.setCaptureSource(path);
+    _captureSource = path;
     _framesSkip = 1;
     _needReinitCapture = true;
 }

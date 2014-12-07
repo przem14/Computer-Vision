@@ -17,21 +17,23 @@ public:
     int boardWidth()   const noexcept { return _boardWidth; }
     int boardHeight()  const noexcept { return _boardHeight; }
 
-    unsigned int pointsOnBoardAmount() const noexcept { return _pointsOnBoardAmount; }
+    unsigned int pointsOnBoardAmount() const noexcept
+    { return _pointsOnBoardAmount; }
     const cv::Size& boardSize() const noexcept { return _boardSize; }
 
-    std::string captureSource() const noexcept { return _captureSource ; }
+    const cv::Mat& intrinsic(int index)  const noexcept
+    { return _intrinsics[index]; }
+    const cv::Mat& distortion(int index) const noexcept
+    { return _distortions[index]; }
 
-    void setCaptureSource(const std::string& captureSource) noexcept
-    { _captureSource = captureSource; }
-
-    const cv::Mat& intrinsic()  const noexcept { return _intrinsic;  }
-    const cv::Mat& distortion() const noexcept { return _distortion; }
-
-    void setIntrinsic(const cv::Mat& intrinsic) noexcept
-    { _intrinsic = intrinsic; }
-    void setDistortion(const cv::Mat& distortion) noexcept
-    { _distortion = distortion; }
+    void addIntrinsic(const cv::Mat& intrinsic) noexcept
+    { _intrinsics.push_back(intrinsic); }
+    void addDistortion(const cv::Mat& distortion) noexcept
+    { _distortions.push_back(distortion); }
+    void setIntrinsic(const cv::Mat& intrinsic, int index) noexcept
+    { _intrinsics[index] = intrinsic; }
+    void setDistortion(const cv::Mat& distortion, int index) noexcept
+    { _distortions[index] = distortion; }
 
     const vector<cv::Mat>& rotation() const noexcept { return _rotation; }
     const vector<cv::Mat>& translation() const noexcept { return _translation; }
@@ -41,13 +43,12 @@ public:
     void setTranslation(const vector<cv::Mat> &translation) noexcept
     { _translation = translation; }
 
-    void saveIntrinsicMatrixWithYmlExtension(const std::string &path)
+    void saveIntrinsicMatrixWithYmlExtension(const std::string &path, int index)
         const noexcept;
-    void saveDistortionCoeffsWithYmlExtension(const std::string &path)
+    void saveDistortionCoeffsWithYmlExtension(const std::string &path, int index)
         const noexcept;
-
-    static const std::string INTRINSIC_MATRIX_TITLE;
-    static const std::string DISTORTION_COEFFS_TITLE;
+    void loadIntrinsicMatrix(const std::string &path, int index) noexcept;
+    void loadDistortionCoeffs(const std::string &path, int index) noexcept;
 
 private:
     int _imagesAmount;
@@ -57,13 +58,17 @@ private:
     int _pointsOnBoardAmount;
     cv::Size _boardSize;
 
-    std::string _captureSource;
-
-    cv::Mat _intrinsic = cv::Mat(3, 3, CV_32FC1);
-    cv::Mat _distortion = cv::Mat(5, 1, CV_32FC1);
+    vector<cv::Mat> _intrinsics;
+    vector<cv::Mat> _distortions;
 
     vector<cv::Mat> _rotation;
     vector<cv::Mat> _translation;
+    //cv::Mat _r = cv::Mat(1, 1, CV_32FC1);
+    //cv::Mat _t = cv::Mat(1, 1, CV_32FC1);
+    //cv::Mat _n = cv::Mat(1, 1, CV_32FC1);
+
+    const std::string INTRINSIC_MATRIX_TITLE = "Intrinsic Matrix";
+    const std::string DISTORTION_COEFFS_TITLE = "Distortion Coefficients";
 };
 
 #endif //CALIBRATIONDATA_H_
