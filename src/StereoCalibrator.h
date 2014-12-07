@@ -34,6 +34,11 @@ private:
                                       const std::string distortionL,
                                       const std::string intrinsicR,
                                       const std::string distortionR) noexcept;
+    void precomputeMapForRemap(cv::Size imageSize,
+                                     MatSharedPtr mx1, MatSharedPtr my1,
+                                     MatSharedPtr mx2, MatSharedPtr my2,
+                                     cv::Mat _R1, cv::Mat _R2,
+                                     cv::Mat _P1, cv::Mat _P2);
     void bouguetsMethod(cv::Size imageSize,
                         MatSharedPtr mx1, MatSharedPtr my1,
                         MatSharedPtr mx2, MatSharedPtr my2,
