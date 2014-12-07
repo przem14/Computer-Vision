@@ -26,9 +26,6 @@ public:
                      int boardHeight) throw (FramesAmountMatchError);
 
     void execute() noexcept;
-    void bouguetsMethod(cv::Size imageSize, MatSharedPtr mx1, MatSharedPtr my1, MatSharedPtr mx2, MatSharedPtr my2,
-                                      cv::Mat _R, cv::Mat _T, cv::Mat _R1, cv::Mat _R2);
-
 
 private:
     void initIntrinsicsAndDistortions() noexcept;
@@ -37,6 +34,15 @@ private:
                                       const std::string distortionL,
                                       const std::string intrinsicR,
                                       const std::string distortionR) noexcept;
+    void bouguetsMethod(cv::Size imageSize,
+                        MatSharedPtr mx1, MatSharedPtr my1,
+                        MatSharedPtr mx2, MatSharedPtr my2,
+                        cv::Mat _R, cv::Mat _T,
+                        cv::Mat _R1, cv::Mat _R2);
+    void hartleysMethod(cv::Size imageSize, int useUncalibrated,
+                        MatSharedPtr mx1, MatSharedPtr my1,
+                        MatSharedPtr mx2, MatSharedPtr my2,
+                        cv::Mat _F, cv::Mat _R1, cv::Mat _R2);
 
     double computeCalibrationError(cv::Mat _F) noexcept;
     void showCalibrationError(cv::Mat _F) noexcept;

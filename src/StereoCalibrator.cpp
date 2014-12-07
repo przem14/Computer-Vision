@@ -25,23 +25,75 @@ StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
         throw FramesAmountMatchError();
 }
 
-void StereoCalibrator::bouguetsMethod(cv::Size imageSize, MatSharedPtr mx1, MatSharedPtr my1, MatSharedPtr mx2, MatSharedPtr my2,
-                                      cv::Mat _R, cv::Mat _T, cv::Mat _R1, cv::Mat _R2)
+void StereoCalibrator::bouguetsMethod(cv::Size imageSize,
+                                      MatSharedPtr mx1, MatSharedPtr my1,
+                                      MatSharedPtr mx2, MatSharedPtr my2,
+                                      cv::Mat _R, cv::Mat _T,
+                                      cv::Mat _R1, cv::Mat _R2)
 {
     cv::Mat _P1(3, 4, CV_32FC1);
     cv::Mat _P2(3, 4, CV_32FC1);
     cv::Mat _Q(3, 4, CV_32FC1);
     cv::stereoRectify(
-        _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
-        _calibrationData.intrinsic(RIGHT), _calibrationData.distortion(RIGHT),
-        imageSize, _R, _T, _R1, _R2, _P1, _P2, _Q, cv::CALIB_ZERO_DISPARITY);
+        _calibrationData.intrinsic(LEFT),
+        _calibrationData.distortion(LEFT),
+        _calibrationData.intrinsic(RIGHT),
+        _calibrationData.distortion(RIGHT),
+        imageSize,
+        _R, _T, _R1, _R2, _P1, _P2, _Q,
+        cv::CALIB_ZERO_DISPARITY);
+    //Precompute maps for cvRemap()
+    cv::initUndistortRectifyMap(
+        _calibrationData.intrinsic(LEFT),
+        _calibrationData.distortion(LEFT),
+        _R1, _P1,
+        imageSize,
+        CV_32F,
+        *mx1, *my1);
+    cv::initUndistortRectifyMap(
+        _calibrationData.intrinsic(RIGHT),
+        _calibrationData.distortion(RIGHT),
+        _R2, _P2,
+        imageSize,
+        CV_32F,
+        *mx2, *my2);
+}
 
-    cv::initUndistortRectifyMap(
-        _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
-        _R1, _P1, imageSize, CV_32F, *mx1, *my1);
-    cv::initUndistortRectifyMap(
-        _calibrationData.intrinsic(RIGHT), _calibrationData.distortion(RIGHT),
-        _R2, _P2, imageSize, CV_32F, *mx2, *my2);
+void StereoCalibrator::hartleysMethod(cv::Size imageSize, int useUncalibrated,
+                                      MatSharedPtr mx1, MatSharedPtr my1,
+                                      MatSharedPtr mx2, MatSharedPtr my2,
+                                      cv::Mat _F, cv::Mat _R1, cv::Mat _R2)
+{
+    cv::Mat _H1(3, 3, CV_32FC1);
+    cv::Mat _H2(3, 3, CV_32FC1);
+    cv::Mat _iM(3, 3, CV_32FC1);
+
+    vector<cv::Point2f> allImagesPoints[2];
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < _calibrationData.imagesAmount(); j++)
+            std::copy(_points[i][j].begin(),
+                      _points[i][j].end(),
+                      back_inserter(allImagesPoints[i]));
+    }
+    if (useUncalibrated == 2)
+    _F = cv::findFundamentalMat(allImagesPoints[0], allImagesPoints[1]);
+    cv::stereoRectifyUncalibrated(allImagesPoints[0],
+                                  allImagesPoints[1],
+                                  _F, imageSize, _H1, _H2, 3);
+    _R1 = _calibrationData.intrinsic(LEFT).inv() *
+    _H1 * _calibrationData.intrinsic(LEFT);
+    _R2 = _calibrationData.intrinsic(RIGHT).inv() *
+    _H2 * _calibrationData.intrinsic(RIGHT);
+    //Precompute map for cvRemap()
+    cv::initUndistortRectifyMap(_calibrationData.intrinsic(LEFT),
+                                _calibrationData.distortion(LEFT),
+                                _R1, _calibrationData.intrinsic(LEFT),
+                                imageSize, CV_32F, *mx1, *my1);
+    cv::initUndistortRectifyMap(_calibrationData.intrinsic(RIGHT),
+                                _calibrationData.distortion(RIGHT),
+                                _R2, _calibrationData.intrinsic(RIGHT),
+                                imageSize, CV_32F, *mx2, *my2);
 }
 
 void StereoCalibrator::execute() noexcept
@@ -171,51 +223,10 @@ void StereoCalibrator::execute() noexcept
 
         if (useUncalibrated == 0)
             bouguetsMethod(imageSize, mx1, my1, mx2, my2, _R, _T, _R1, _R2);
-        //OR ELSE HARTLEY'S METHOD
-        else if (useUncalibrated == 1 || useUncalibrated == 2)
-        // use intrinsic parameters of each camera, but
-        // compute the rectification transformation directly
-        // from the fundamental matrix
-        {
-            cv::Mat _H1(3, 3, CV_32FC1);
-            cv::Mat _H2(3, 3, CV_32FC1);
-            cv::Mat _iM(3, 3, CV_32FC1);
-            //Just to show you could have independently used F
-            vector<cv::Point2f> allImagesPoints[2];
-            for (int i = 0; i < 2; i++)
-            {
-                for (int j = 0; j < _calibrationData.imagesAmount(); j++)
-                    std::copy(_points[i][j].begin(),
-                              _points[i][j].end(),
-                              back_inserter(allImagesPoints[i]));
-            }
-            if (useUncalibrated == 2)
-                _F = cv::findFundamentalMat(allImagesPoints[0],
-                                            allImagesPoints[1]);
-            cv::stereoRectifyUncalibrated(
-                    allImagesPoints[0],
-                    allImagesPoints[1],
-                    _F,
-                    imageSize,
-                    _H1, _H2, 3);
-            _R1 = _calibrationData.intrinsic(LEFT).inv() *
-                    _H1 * _calibrationData.intrinsic(LEFT);
-            _R2 = _calibrationData.intrinsic(RIGHT).inv() *
-                    _H2 * _calibrationData.intrinsic(RIGHT);
-            //Precompute map for cvRemap()
-            cv::initUndistortRectifyMap(
-                _calibrationData.intrinsic(LEFT),
-                _calibrationData.distortion(LEFT),
-                _R1, _calibrationData.intrinsic(LEFT),
-                imageSize, CV_32F, *mx1, *my1);
-            cv::initUndistortRectifyMap(
-                _calibrationData.intrinsic(RIGHT),
-                _calibrationData.distortion(RIGHT),
-                _R2, _calibrationData.intrinsic(RIGHT),
-                imageSize, CV_32F, *mx2, *my2);
-        }
         else
-            assert(0);
+            hartleysMethod(imageSize, useUncalibrated,
+                           mx1, my1, mx2, my2, _F, _R1, _R2);
+
         // RECTIFY THE IMAGES
         pair = MatSharedPtr(new cv::Mat(imageSize.height*resizeFactor, imageSize.width*2*resizeFactor,
                                         CV_8UC3));
