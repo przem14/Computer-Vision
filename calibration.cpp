@@ -1,9 +1,7 @@
 #include "src/Calibrator.h"
 #include "src/StereoCalibrator.h"
 
-bool isNumberOfInputParametersCorrect(const int numberOfParameters);
-
-int main(int argc, char* argv[])
+int main()
 {
     std::string pathL = "imagesA\\images\\left\\image%02d.jpg";
     std::string pathR = "imagesA\\images\\right\\image%02d.jpg";
@@ -25,11 +23,4 @@ int main(int argc, char* argv[])
     scalibrator.execute();
 
     return 0;
-}
-
-bool isNumberOfInputParametersCorrect(const int numberOfParameters)
-{
-    const int CORRECT_NUMBER_OF_PARAMETERS = 4;
-
-    return numberOfParameters == CORRECT_NUMBER_OF_PARAMETERS;
 }

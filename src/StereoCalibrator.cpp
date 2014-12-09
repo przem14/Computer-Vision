@@ -2,21 +2,23 @@
 
 StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
                                    const std::string imagesRight,
-                                   int boardWidth, int boardHeight)
-                                            throw (FramesAmountMatchError)
+                                   int boardWidth,
+                                   int boardHeight)
+    throw (FramesAmountMatchError)
     : _imagesLeft(imagesLeft),
       _imagesRight(imagesRight),
       _captureLeft(imagesLeft),
       _captureRight(imagesRight),
       _calibrationData(_captureLeft.get(CV_CAP_PROP_FRAME_COUNT),
-                      boardWidth, boardHeight)
+                       boardWidth,
+                       boardHeight)
 {
-    int leftFramesAmount = _captureLeft.get(CV_CAP_PROP_FRAME_COUNT);
+    int leftFramesAmount  = _captureLeft.get(CV_CAP_PROP_FRAME_COUNT);
     int rightFramesAmount = _captureRight.get(CV_CAP_PROP_FRAME_COUNT);
-    if (leftFramesAmount == rightFramesAmount)
-        initIntrinsicsAndDistortions();
-    else
+
+    if(leftFramesAmount != rightFramesAmount) 
         throw FramesAmountMatchError();
+    initIntrinsicsAndDistortions();
 }
 
 void StereoCalibrator::execute() noexcept
@@ -38,10 +40,7 @@ void StereoCalibrator::execute() noexcept
         initOutputMapsAndImages();
         MatSharedPtr pair;
 
-        if (_bouguetsMethod)
-            bouguetsMethod();
-        else
-            hartleysMethod();
+        computingRectification();
 
         saveCalibrationResults();
 
@@ -93,9 +92,22 @@ void StereoCalibrator::execute() noexcept
     }
 }
 
-void StereoCalibrator::useBouguetsMethod(bool bouguetsMethod) noexcept
+void StereoCalibrator::useBouguetsMethod() noexcept
 {
-    _bouguetsMethod = bouguetsMethod;
+    _isBouguetsMethodChoosen = true;
+}
+
+void StereoCalibrator::useHartleyMethod() noexcept
+{
+    _isBouguetsMethodChoosen = false;
+}
+
+void StereoCalibrator::computingRectification() noexcept
+{
+    if(_isBouguetsMethodChoosen) 
+        bouguetsMethod();
+    else 
+        hartleysMethod();
 }
 
 void StereoCalibrator::precomputeMapForRemap(

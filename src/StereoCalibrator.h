@@ -28,7 +28,8 @@ public:
 
     void execute() noexcept;
 
-    void useBouguetsMethod(bool bouguetsMethod) noexcept;
+    void useBouguetsMethod() noexcept;
+    void useHartleyMethod()  noexcept;
 
 private:
     void initIntrinsicsAndDistortions() noexcept;
@@ -51,13 +52,14 @@ private:
                                const cv::Mat& cameraMatrix2) noexcept;
     void bouguetsMethod();
     void hartleysMethod();
+    void computingRectification() noexcept;
 
     double computeAverageCalibrationError() noexcept;
     void showAverageCalibrationError() noexcept;
 
 
 
-    bool _bouguetsMethod = true;
+    bool _isBouguetsMethodChoosen = true;
 
     std::string _imagesLeft;
     std::string _imagesRight;
