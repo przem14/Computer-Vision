@@ -3,19 +3,13 @@
 
 Calibrator::Calibrator(int imagesAmount, int boardWidth, int boardHeight)
     noexcept
-    : _calibrationData(imagesAmount, boardWidth, boardHeight),
-      _imagePoints(
-              _calibrationData.imagesAmount(),
-              vector<cv::Point2f>(_calibrationData.pointsOnBoardAmount())),
-      _objectPoints(
-              _calibrationData.imagesAmount(),
-              vector<cv::Point3f>(_calibrationData.pointsOnBoardAmount()))
+    : _calibrationData(imagesAmount, boardWidth, boardHeight)
 {
 }
 
 void Calibrator::execute() noexcept
 {
-    _image = getNextImage();
+    _image = nextImage(_capture);
 
     DisplayManager::createWindows(
         {CALIBRATION_WINDOW_NAME, UNDISTORTED_WINDOW_NAME});
@@ -29,7 +23,7 @@ void Calibrator::execute() noexcept
             DISTORTION_COEFFS_OUTPUT_FILE, 0);
 
     reinitCaptureIfNecessary();
-    presentImagesWithTheirsUndistortedCopy();
+    if(_showUndistorted) presentImagesWithTheirsUndistortedCopy();
     cv::destroyAllWindows();
 }
 
@@ -48,7 +42,7 @@ void Calibrator::calibrateCamera() noexcept
                                        distortion,
                                        rotation,
                                        translation);
-    std::cout << "\nErr<" << error << ">\n";
+    showCalibrationError(error);
 
     _calibrationData.addIntrinsic(intrinsic);
     _calibrationData.addDistortion(distortion);
@@ -87,7 +81,7 @@ void Calibrator::presentImagesWithTheirsUndistortedCopy()
 
     while(pressedKey != ESCAPE_KEY)
     {
-        try{ _image = getNextImage(); }
+        try{ _image = nextImage(_capture); }
         catch(ImageReadError) { break; }
         showImageAndItsUndistortedCopy();
         pressedKey = handlePause();
@@ -115,11 +109,12 @@ MatSharedPtr Calibrator::createUndistortedImage() const noexcept
     return undistortedImage;
 }
 
-MatSharedPtr Calibrator::getNextImage() throw (ImageReadError)
+MatSharedPtr Calibrator::nextImage(cv::VideoCapture& capture)
+    const throw (ImageReadError)
 {
     MatSharedPtr image = MatSharedPtr(new cv::Mat());
 
-    if(!_capture.read(*image))
+    if(!capture.read(*image))
         throw ImageReadError();
     return image;
 }
@@ -133,35 +128,38 @@ void Calibrator::reinitCaptureFieldWithImagesPath(const std::string &path)
     _needReinitCapture = true;
 }
 
-void Calibrator::showChessboardPointsWhenFounded()
+void Calibrator::showChessboardPointsWhenFound(
+                                    const CalibrationData& calibrationData)
 {
-    const bool isPatternFounded = true;
+    const bool isPatternFound = true;
 
     drawChessboardCorners(*_image,
-                          _calibrationData.boardSize(),
+                          calibrationData.boardSize(),
                           _corners,
-                          isPatternFounded);
+                          isPatternFound);
     DisplayManager::showImages(
             {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, 1)});
 }
 
-void Calibrator::showChessboardPointsWhenNotFounded()
+void Calibrator::showChessboardPointsWhenNotFound(
+                                    const CalibrationData& calibrationData)
 {
-    const bool isPatternFounded = false;
+    const bool isPatternFound = false;
 
     drawChessboardCorners(*_image,
-                          _calibrationData.boardSize(),
+                          calibrationData.boardSize(),
                           _corners,
-                          isPatternFounded);
+                          isPatternFound);
     DisplayManager::showImages(
             {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, 1)});
 }
 
 
-bool Calibrator::findCornersOnChessboard() noexcept
+bool Calibrator::findCornersOnChessboard(const CalibrationData& calibrationData)
+    noexcept
 {
     return findChessboardCorners(*_image,
-                                 _calibrationData.boardSize(),
+                                 calibrationData.boardSize(),
                                  _corners,
                                  cv::CALIB_CB_ADAPTIVE_THRESH |
                                  cv::CALIB_CB_FILTER_QUADS);
@@ -179,29 +177,38 @@ void Calibrator::getSubpixelAccuracy() noexcept
                      termCriteria);
 }
 
-void Calibrator::saveImagePoints() noexcept
+void Calibrator::saveImagePoints(
+        const CalibrationData& calibrationData,
+        vector<vector<cv::Point2f>>& imagePoints) noexcept
 {
-    for(unsigned int j=0; j<_calibrationData.pointsOnBoardAmount(); j++)
+    imagePoints.push_back(_corners);
+    if(_objectPoints.size() < calibrationData.imagesAmount())
     {
-        _imagePoints[_successes][j]    = _corners[j];
-        _objectPoints[_successes][j].x = j / _calibrationData.boardWidth();
-        _objectPoints[_successes][j].y = j % _calibrationData.boardWidth();
-        _objectPoints[_successes][j].z = 0.0f;
+        vector<cv::Point3f> boardPoints(calibrationData.pointsOnBoardAmount());
+        for(size_t i = 0; i < calibrationData.pointsOnBoardAmount(); i++)
+        {
+            boardPoints[i] = cv::Point3f(
+                        (i / calibrationData.boardWidth()) * _squareSize,
+                        (i % calibrationData.boardWidth()) * _squareSize, 0);
+        }
+        _objectPoints.push_back(boardPoints);
     }
 }
 
-void Calibrator::findCornersOnImage() noexcept
+void Calibrator::findCornersOnImage(
+        const CalibrationData& calibrationData,
+        vector<vector<cv::Point2f>>& imagePoints) noexcept
 {
-    if(findCornersOnChessboard())
+    if(findCornersOnChessboard(calibrationData))
     {
         getSubpixelAccuracy();
-        showChessboardPointsWhenFounded();
+        if(_displayCorners) showChessboardPointsWhenFound(calibrationData);
     }
-    else showChessboardPointsWhenNotFounded();
+    else if(_displayCorners) showChessboardPointsWhenNotFound(calibrationData);
 
-    if(_corners.size() == _calibrationData.pointsOnBoardAmount())
+    if(_corners.size() == calibrationData.pointsOnBoardAmount())
     {
-        saveImagePoints();
+        saveImagePoints(calibrationData, imagePoints);
         _successes++;
     }
 }
@@ -227,13 +234,34 @@ void Calibrator::findAllCorners() noexcept
             {std::make_tuple(CALIBRATION_WINDOW_NAME, _image, SHOWING_TIME)});
         if(frame++ % _framesSkip == 0)
         {
-            findCornersOnImage();
+            findCornersOnImage(_calibrationData,
+                               _imagePoints);
             displayNumberOfSuccesses();
         }
 
         char pressedKey = handlePause();
         handleEscInterruption(pressedKey);
         if(_successes < _calibrationData.imagesAmount())
-            _image = getNextImage();
+            _image = nextImage(_capture);
     }
+}
+
+void Calibrator::setDisplayCorners(bool displayCorners) noexcept
+{
+    _displayCorners = displayCorners;
+}
+
+void Calibrator::setShowUndistorted(bool showUndistorted) noexcept
+{
+    _showUndistorted = showUndistorted;
+}
+
+void Calibrator::setSquareSize(double squareSize) noexcept
+{
+    _squareSize = squareSize;
+}
+
+void Calibrator::showCalibrationError(double error) const noexcept
+{
+    std::cout << std::endl << "Err<" << error << ">" << std::endl;
 }

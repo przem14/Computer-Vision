@@ -9,6 +9,7 @@ using std::vector;
 class CalibrationData
 {
 public:
+    CalibrationData() noexcept {}
     CalibrationData(const int imagesAmount,
                     const int boardWidth,
                     const int boardHeight) noexcept;

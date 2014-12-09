@@ -4,6 +4,7 @@
 #include "StereoCalibrationData.h"
 #include "DisplayManager.h"
 #include "CommonExceptions.h"
+#include "Calibrator.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -17,7 +18,7 @@
 using std::vector;
 using MatSharedPtr = std::shared_ptr<cv::Mat>;
 
-class StereoCalibrator
+class StereoCalibrator : public Calibrator
 {
 public:
     StereoCalibrator(const std::string imagesLeft,
@@ -26,6 +27,8 @@ public:
                      int boardHeight) throw (FramesAmountMatchError);
 
     void execute() noexcept;
+
+    void useBouguetsMethod(bool bouguetsMethod) noexcept;
 
 private:
     void initIntrinsicsAndDistortions() noexcept;
@@ -36,18 +39,25 @@ private:
                                       const std::string distortionR) noexcept;
     void saveCalibrationResults() const noexcept;
 
-    void precomputeMapForRemap(cv::Size imageSize,
-                               MatSharedPtr mx1, MatSharedPtr my1,
-                               MatSharedPtr mx2, MatSharedPtr my2);
-    void bouguetsMethod(cv::Size imageSize,
-                        MatSharedPtr mx1, MatSharedPtr my1,
-                        MatSharedPtr mx2, MatSharedPtr my2);
-    void hartleysMethod(cv::Size imageSize, int useUncalibrated,
-                        MatSharedPtr mx1, MatSharedPtr my1,
-                        MatSharedPtr mx2, MatSharedPtr my2);
+    void chooseNextImage(const int leftOrRight) noexcept;
 
-    double computeCalibrationError() noexcept;
-    void showCalibrationError() noexcept;
+    void findAllCorners() noexcept;
+
+    void calibrateCameras() noexcept;
+
+    void initOutputMapsAndImages() noexcept;
+
+    void precomputeMapForRemap(const cv::Mat& cameraMatrix1,
+                               const cv::Mat& cameraMatrix2) noexcept;
+    void bouguetsMethod();
+    void hartleysMethod();
+
+    double computeAverageCalibrationError() noexcept;
+    void showAverageCalibrationError() noexcept;
+
+
+
+    bool _bouguetsMethod = true;
 
     std::string _imagesLeft;
     std::string _imagesRight;
@@ -56,10 +66,21 @@ private:
     StereoCalibrationData _calibrationData;
 
     vector<vector<cv::Point2f>> _points[2];
-    vector<vector<cv::Point3f>> _objectPoints;
+
+    MatSharedPtr _rectifyMapX1;
+    MatSharedPtr _rectifyMapY1;
+    MatSharedPtr _rectifyMapX2;
+    MatSharedPtr _rectifyMapY2;
+    MatSharedPtr _remapedImage1;
+    MatSharedPtr _remapedImage2;
+
 
     const int LEFT  = 0;
     const int RIGHT = 1;
+
+    const float RESIZE_FACTOR = 0.625;
+
+    const std::string CORNERS_WINDOW_TITLE = "Corners";
 
     const std::string STEREO_ROTATION_OUTPUT_FILE = "stereo_rotation.yml";
     const std::string STEREO_TRANSLATION_OUTPUT_FILE = "stereo_translation.yml";
@@ -68,6 +89,9 @@ private:
     const std::string RECT_TRANSFORMS_OUTPUT_FILE = "rect_transforms.yml";
     const std::string PROJECTION_MATRICES_OUTPUT_FILE = "projection_matrices.yml";
     const std::string D2D_MAPPING_MATRIX_OUTPUT_FILE = "d2d_mapping_matrix.yml";
+
+    const std::string RUNNING_CALIBRATION = "Running stereo calibration ...";
+    const std::string CALIBRATION_DONE = " done";
 };
 
 #endif // STEREOCALIBRATOR_H

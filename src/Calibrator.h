@@ -25,9 +25,38 @@ public:
 
     void reinitCaptureFieldWithImagesPath(const std::string &path) noexcept;
 
-private:
-    MatSharedPtr getNextImage() throw (ImageReadError);
+    void setDisplayCorners(bool displayCorners) noexcept;
+    void setShowUndistorted(bool showUndistorted) noexcept;
 
+    void setSquareSize(double squareSize) noexcept;
+
+protected:
+    Calibrator() noexcept {}
+
+    MatSharedPtr nextImage(cv::VideoCapture& capture)
+        const throw (ImageReadError);
+
+    MatSharedPtr createGrayImage() noexcept;
+    void getSubpixelAccuracy() noexcept;
+
+    void findCornersOnImage(const CalibrationData& calibrationData,
+                            vector<vector<cv::Point2f>>& imagePoints) noexcept;
+
+    void showCalibrationError(double error) const noexcept;
+
+
+
+    MatSharedPtr _image = nullptr;
+    MatSharedPtr _grayImage;
+    vector<cv::Point2f> _corners;
+    vector<vector<cv::Point3f>> _objectPoints;
+
+    bool _displayCorners = true;
+    bool _showUndistorted = true;
+
+    double _squareSize = 1;
+
+private:
     void reinitCaptureIfNecessary() noexcept;
 
     void presentImagesWithTheirsUndistortedCopy();
@@ -38,20 +67,19 @@ private:
     char handlePause() const noexcept;
     void handleEscInterruption(char pressedKey) const throw (InterruptedByUser);
 
-    void showChessboardPointsWhenFounded();
-    void showChessboardPointsWhenNotFounded();
-
     void calibrateCamera() noexcept;
 
     void findAllCorners() noexcept;
-    bool findCornersOnChessboard() noexcept;
-    void findCornersOnImage() noexcept;
+    bool findCornersOnChessboard(const CalibrationData& calibrationData)
+        noexcept;
 
-    void getSubpixelAccuracy() noexcept;
+    void showChessboardPointsWhenFound(
+            const CalibrationData& calibrationData);
+    void showChessboardPointsWhenNotFound(
+            const CalibrationData &calibrationData);
 
-    void saveImagePoints() noexcept;
-
-    MatSharedPtr createGrayImage() noexcept;
+    void saveImagePoints(const CalibrationData& calibrationData,
+                         vector<vector<cv::Point2f>>& imagePoints) noexcept;
 
     void displayNumberOfSuccesses() noexcept;
 
@@ -61,12 +89,7 @@ private:
     std::string _captureSource = "";
     CalibrationData  _calibrationData;
 
-    MatSharedPtr _image = nullptr;
-    MatSharedPtr _grayImage;
-    vector<cv::Point2f> _corners;
-
     vector<vector<cv::Point2f>> _imagePoints;
-    vector<vector<cv::Point3f>> _objectPoints;
 
     int _successes = 0;
     int _framesSkip = 20;

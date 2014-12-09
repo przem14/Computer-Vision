@@ -4,16 +4,12 @@ StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
                                    const std::string imagesRight,
                                    int boardWidth, int boardHeight)
                                             throw (FramesAmountMatchError)
-    :_imagesLeft(imagesLeft),
-     _imagesRight(imagesRight),
-     _captureLeft(imagesLeft),
-     _captureRight(imagesRight),
-     _calibrationData(
-              _captureLeft.get(CV_CAP_PROP_FRAME_COUNT),
-              boardWidth, boardHeight),
-     _objectPoints(
-              _calibrationData.imagesAmount(),
-              vector<cv::Point3f>(_calibrationData.pointsOnBoardAmount()))
+    : _imagesLeft(imagesLeft),
+      _imagesRight(imagesRight),
+      _captureLeft(imagesLeft),
+      _captureRight(imagesRight),
+      _calibrationData(_captureLeft.get(CV_CAP_PROP_FRAME_COUNT),
+                      boardWidth, boardHeight)
 {
     int leftFramesAmount = _captureLeft.get(CV_CAP_PROP_FRAME_COUNT);
     int rightFramesAmount = _captureRight.get(CV_CAP_PROP_FRAME_COUNT);
@@ -23,27 +19,104 @@ StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
         throw FramesAmountMatchError();
 }
 
-void StereoCalibrator::precomputeMapForRemap(cv::Size imageSize,
-                                     MatSharedPtr mx1, MatSharedPtr my1,
-                                     MatSharedPtr mx2, MatSharedPtr my2)
+void StereoCalibrator::execute() noexcept
+{
+    loadSingleCalibrationResults("intrinsic_matrixL.yml",
+                                 "distortion_coeffsL.yml",
+                                 "intrinsic_matrixR.yml",
+                                 "distortion_coeffsR.yml");
+
+    setDisplayCorners(false);
+    findAllCorners();
+
+    calibrateCameras();
+    showAverageCalibrationError();
+
+    //COMPUTE AND DISPLAY RECTIFICATION
+    if (_showUndistorted)
+    {
+        initOutputMapsAndImages();
+        MatSharedPtr pair;
+
+        if (_bouguetsMethod)
+            bouguetsMethod();
+        else
+            hartleysMethod();
+
+        saveCalibrationResults();
+
+        // RECTIFY THE IMAGES
+        pair = MatSharedPtr(new cv::Mat(_image -> size().height * RESIZE_FACTOR, _image -> size().width * 2 * RESIZE_FACTOR,
+                                        CV_8UC3));
+        _captureLeft.open(_imagesLeft);
+        _captureRight.open(_imagesRight);
+        for (int i = 0; i < _calibrationData.imagesAmount(); i++)
+        {
+            MatSharedPtr img1 = MatSharedPtr(new cv::Mat());
+            MatSharedPtr img2 = MatSharedPtr(new cv::Mat());
+
+            _captureLeft.read(*img1);
+            MatSharedPtr grayImage1(new cv::Mat(_image -> size(), CV_8UC3));
+            cv::cvtColor(*img1, *grayImage1, CV_BGR2GRAY);
+
+            _captureRight.read(*img2);
+            MatSharedPtr grayImage2(new cv::Mat(_image -> size(), CV_8UC3));
+            cv::cvtColor(*img2, *grayImage2, CV_BGR2GRAY);
+
+            if (!img1 -> empty() && !img2 -> empty())
+            {
+                MatSharedPtr part, resized1 = _remapedImage1, resized2 = _remapedImage2;
+                cv::remap(*grayImage1, *_remapedImage1, *_rectifyMapX1, *_rectifyMapY1, cv::INTER_LINEAR);
+                cv::remap(*grayImage2, *_remapedImage2, *_rectifyMapX2, *_rectifyMapY2, cv::INTER_LINEAR);
+                cv::resize(*_remapedImage1,
+                           *resized1,
+                           cv::Size(_image -> size().width * RESIZE_FACTOR, _image -> size().height * RESIZE_FACTOR),
+                           cv::INTER_AREA);
+                cv::resize(*_remapedImage2,
+                           *resized2,
+                           cv::Size(_image -> size().width * RESIZE_FACTOR, _image -> size().height * RESIZE_FACTOR),
+                           cv::INTER_AREA);
+                part = MatSharedPtr(new cv::Mat(
+                                pair -> colRange(0, _image -> size().width * RESIZE_FACTOR)));
+                cv::cvtColor(*resized1, *part, CV_GRAY2BGR);
+                part = MatSharedPtr(new cv::Mat(
+                        pair -> colRange(_image -> size().width * RESIZE_FACTOR, _image -> size().width * 2 * RESIZE_FACTOR)));
+                cv::cvtColor(*resized2, *part, CV_GRAY2BGR);
+                for (int j = 0; j < _image -> size().height * RESIZE_FACTOR; j += 16 * RESIZE_FACTOR)
+                    cv::line(*pair, cv::Point(0, j),
+                             cv::Point(_image -> size().width * 2 * RESIZE_FACTOR, j),
+                             CV_RGB(0, 255, 0));
+                DisplayManager::showImages(
+                    {std::make_tuple("rectified", pair, 5000)});
+            }
+        }
+    }
+}
+
+void StereoCalibrator::useBouguetsMethod(bool bouguetsMethod) noexcept
+{
+    _bouguetsMethod = bouguetsMethod;
+}
+
+void StereoCalibrator::precomputeMapForRemap(
+                                    const cv::Mat& cameraMatrix1,
+                                    const cv::Mat& cameraMatrix2) noexcept
 {
     cv::initUndistortRectifyMap(
         _calibrationData.intrinsic(LEFT),
         _calibrationData.distortion(LEFT),
         _calibrationData.rectTransform1(),
-        _calibrationData.projectionMatrix1(),
-        imageSize, CV_32F, *mx1, *my1);
+        cameraMatrix1,
+        _image -> size(), CV_32F, *_rectifyMapX1, *_rectifyMapY1);
     cv::initUndistortRectifyMap(
         _calibrationData.intrinsic(RIGHT),
         _calibrationData.distortion(RIGHT),
         _calibrationData.rectTransform2(),
-        _calibrationData.projectionMatrix2(),
-        imageSize, CV_32F, *mx2, *my2);
+        cameraMatrix2,
+        _image -> size(), CV_32F, *_rectifyMapX2, *_rectifyMapY2);
 }
 
-void StereoCalibrator::bouguetsMethod(cv::Size imageSize,
-                                      MatSharedPtr mx1, MatSharedPtr my1,
-                                      MatSharedPtr mx2, MatSharedPtr my2)
+void StereoCalibrator::bouguetsMethod()
 {
     cv::Mat rectTransform1(3, 3, CV_32FC1), rectTransform2(3, 3, CV_32FC1);
     cv::Mat projectionMatrix1(3, 4, CV_32FC1), projectionMatrix2(3, 4, CV_32FC1);
@@ -52,7 +125,7 @@ void StereoCalibrator::bouguetsMethod(cv::Size imageSize,
     cv::stereoRectify(
         _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
         _calibrationData.intrinsic(RIGHT), _calibrationData.distortion(RIGHT),
-        imageSize,
+        _image -> size(),
         _calibrationData.stereoRotation(), _calibrationData.stereoTranslation(),
         rectTransform1, rectTransform2,
         projectionMatrix1, projectionMatrix2,
@@ -61,13 +134,12 @@ void StereoCalibrator::bouguetsMethod(cv::Size imageSize,
     _calibrationData.setRectTransforms(rectTransform1, rectTransform2);
     _calibrationData.setProjectionMatrices(projectionMatrix1, projectionMatrix2);
 
-    precomputeMapForRemap(imageSize, mx1, my1, mx2, my2);
+    precomputeMapForRemap(_calibrationData.projectionMatrix1(),
+                          _calibrationData.projectionMatrix2());
 }
 
 
-void StereoCalibrator::hartleysMethod(cv::Size imageSize, int useUncalibrated,
-                                      MatSharedPtr mx1, MatSharedPtr my1,
-                                      MatSharedPtr mx2, MatSharedPtr my2)
+void StereoCalibrator::hartleysMethod()
 {
     cv::Mat homographyMatrix1(3, 3, CV_32FC1);
     cv::Mat homographyMatrix2(3, 3, CV_32FC1);
@@ -80,16 +152,15 @@ void StereoCalibrator::hartleysMethod(cv::Size imageSize, int useUncalibrated,
                       _points[i][j].end(),
                       back_inserter(allImagesPoints[i]));
     }
-    if (useUncalibrated == 2)
-        _calibrationData.setFundamentalMatrix(
-            cv::findFundamentalMat(allImagesPoints[LEFT],
-                                   allImagesPoints[RIGHT]));
+    _calibrationData.setFundamentalMatrix(
+        cv::findFundamentalMat(allImagesPoints[LEFT],
+                               allImagesPoints[RIGHT]));
 
     cv::stereoRectifyUncalibrated(
         allImagesPoints[LEFT],
         allImagesPoints[RIGHT],
         _calibrationData.fundamentalMatrix(),
-        imageSize,
+        _image -> size(),
         homographyMatrix1, homographyMatrix2, 3);
 
     _calibrationData.setHomographyMatrices(homographyMatrix1,
@@ -103,192 +174,8 @@ void StereoCalibrator::hartleysMethod(cv::Size imageSize, int useUncalibrated,
             _calibrationData.homographyMatrix2() *
             _calibrationData.intrinsic(RIGHT));
 
-    precomputeMapForRemap(imageSize, mx1, my1, mx2, my2);
-}
-
-void StereoCalibrator::execute() noexcept
-{
-    loadSingleCalibrationResults("intrinsic_matrixL.yml",
-                                 "distortion_coeffsL.yml",
-                                 "intrinsic_matrixR.yml",
-                                 "distortion_coeffsR.yml");
-
-    int useUncalibrated = 0;//defines which method of calibration use
-    float resizeFactor = 0.625;
-    int displayCorners = 0;
-    int showUndistorted = 1;
-    const int maxScale = 1;
-    const float squareSize = 1.f; //Set this to your actual square size
-    int lr;
-    vector<uchar> active[2];
-    vector<cv::Point2f> temp(_calibrationData.pointsOnBoardAmount());
-    cv::Size imageSize(0, 0);
-    // ARRAY AND VECTOR STORAGE:
-    if(displayCorners)
-        DisplayManager::createWindows({"Corners"});
-    // READ IN THE LIST OF CHESSBOARDS:
-    for (int i = 0;; i++)
-    {
-        int result = 0;
-        lr = i % 2;
-        MatSharedPtr img = MatSharedPtr(new cv::Mat());
-        if (lr == 0)
-            _captureLeft.read(*img);
-        else
-            _captureRight.read(*img);
-        if (img -> empty())
-            break;
-        imageSize = img -> size();
-        //FIND CHESSBOARDS AND CORNERS THEREIN:
-        for (int s = 1; (s <= maxScale) && !result; s++)
-        {
-            MatSharedPtr timg = img;
-            if (s > 1)
-                cv::resize(*img,
-                           *timg,
-                           cv::Size(imageSize.width * s, imageSize.height * s),
-                           cv::INTER_CUBIC);
-            result = findChessboardCorners(
-                        *timg,
-                        _calibrationData.boardSize(),
-                        temp,
-                        cv::CALIB_CB_ADAPTIVE_THRESH |
-                        cv::CALIB_CB_NORMALIZE_IMAGE);
-            if (result || s == maxScale)
-                for (unsigned j = 0; j < temp.size(); j++)
-                {
-                    temp[j].x /= s;
-                    temp[j].y /= s;
-                }
-        }
-        if (displayCorners)
-        {
-            MatSharedPtr cimg(new cv::Mat(imageSize, 8, 3));
-            cv::cvtColor(*img, *cimg, CV_GRAY2BGR);
-            cv::drawChessboardCorners(
-                    *cimg,
-                    _calibrationData.boardSize(),
-                    temp,
-                    result);
-            DisplayManager::showImages(
-                {std::make_tuple("corners", cimg, 5000)});
-        }
-        else
-            putchar('.');
-        active[lr].push_back((uchar)result);
-    //assert( result != 0 );
-        if (result)
-        {
-            MatSharedPtr grayImage(new cv::Mat(imageSize, CV_8UC3));
-            cv::cvtColor(*img, *grayImage, CV_BGR2GRAY);
-            cv::cornerSubPix(
-                    *grayImage,
-                    temp,
-                    cv::Size(11, 11),
-                    cv::Size(-1,-1),
-                    cv::TermCriteria(
-                        CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 30, 0.01));
-            _points[lr].push_back(temp);
-        }
-    }
-    // HARVEST CHESSBOARD 3D OBJECT POINT LIST:
-
-    for (int k = 0; k < _calibrationData.imagesAmount(); k++)
-        for (int i = 0; i < _calibrationData.boardHeight(); i++)
-            for (int j = 0; j < _calibrationData.boardWidth(); j++)
-                _objectPoints[k][i*_calibrationData.boardWidth() + j] =
-                    cv::Point3f(i*squareSize, j*squareSize, 0);
-
-    // CALIBRATE THE STEREO CAMERAS
-    std::cout << "\nRunning stereo calibration ...";
-    std::fflush(stdout);
-
-    cv::Mat stereoRotation(3, 3, CV_32FC1), stereoTranslation(3, 1, CV_32FC1);
-    cv::Mat essentialMatrix(3, 3, CV_32FC1), fundamentalMatrix(3, 3, CV_32FC1);
-
-    double error = cv::stereoCalibrate(
-        _objectPoints, _points[LEFT], _points[RIGHT],
-        _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
-        _calibrationData.intrinsic(RIGHT), _calibrationData.distortion(RIGHT),
-        imageSize, stereoRotation, stereoTranslation,
-        essentialMatrix, fundamentalMatrix,
-        cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
-        CV_CALIB_FIX_INTRINSIC);
-
-    _calibrationData.setStereoRotation(stereoRotation);
-    _calibrationData.setStereoTranslation(stereoTranslation);
-    _calibrationData.setEssentialMatrix(essentialMatrix);
-    _calibrationData.setFundamentalMatrix(fundamentalMatrix);
-
-    std::cout << " done\n";
-    std::cout << "\nErr<" << error << ">\n";
-
-    showCalibrationError();
-
-    //COMPUTE AND DISPLAY RECTIFICATION
-    if (showUndistorted)
-    {
-        MatSharedPtr mx1(new cv::Mat(imageSize.height, imageSize.width, CV_32F));
-        MatSharedPtr my1(new cv::Mat(imageSize.height, imageSize.width, CV_32F));
-        MatSharedPtr mx2(new cv::Mat(imageSize.height, imageSize.width, CV_32F));
-        MatSharedPtr my2(new cv::Mat(imageSize.height, imageSize.width, CV_32F));
-        MatSharedPtr img1r(new cv::Mat(imageSize.height, imageSize.width, CV_8U));
-        MatSharedPtr img2r(new cv::Mat(imageSize.height, imageSize.width, CV_8U));
-        MatSharedPtr pair;
-
-        if (useUncalibrated == 0)
-            bouguetsMethod(imageSize, mx1, my1, mx2, my2);
-        else
-            hartleysMethod(imageSize, useUncalibrated, mx1, my1, mx2, my2);
-
-        saveCalibrationResults();
-
-        // RECTIFY THE IMAGES
-        pair = MatSharedPtr(new cv::Mat(imageSize.height*resizeFactor, imageSize.width*2*resizeFactor,
-                                        CV_8UC3));
-        _captureLeft.open(_imagesLeft);
-        _captureRight.open(_imagesRight);
-        for (int i = 0; i < _calibrationData.imagesAmount(); i++)
-        {
-            MatSharedPtr img1 = MatSharedPtr(new cv::Mat());
-            MatSharedPtr img2 = MatSharedPtr(new cv::Mat());
-
-            _captureLeft.read(*img1);
-            MatSharedPtr grayImage1(new cv::Mat(imageSize, CV_8UC3));
-            cv::cvtColor(*img1, *grayImage1, CV_BGR2GRAY);
-
-            _captureRight.read(*img2);
-            MatSharedPtr grayImage2(new cv::Mat(imageSize, CV_8UC3));
-            cv::cvtColor(*img2, *grayImage2, CV_BGR2GRAY);
-
-            if (!img1 -> empty() && !img2 -> empty())
-            {
-                MatSharedPtr part, resized1 = img1r, resized2 = img2r;
-                cv::remap(*grayImage1, *img1r, *mx1, *my1, cv::INTER_LINEAR);
-                cv::remap(*grayImage2, *img2r, *mx2, *my2, cv::INTER_LINEAR);
-                cv::resize(*img1r,
-                           *resized1,
-                           cv::Size(imageSize.width * resizeFactor, imageSize.height * resizeFactor),
-                           cv::INTER_AREA);
-                cv::resize(*img2r,
-                           *resized2,
-                           cv::Size(imageSize.width * resizeFactor, imageSize.height * resizeFactor),
-                           cv::INTER_AREA);
-                part = MatSharedPtr(new cv::Mat(
-                                pair -> colRange(0, imageSize.width*resizeFactor)));
-                cv::cvtColor(*resized1, *part, CV_GRAY2BGR);
-                part = MatSharedPtr(new cv::Mat(
-                        pair -> colRange(imageSize.width*resizeFactor, imageSize.width*2*resizeFactor)));
-                cv::cvtColor(*resized2, *part, CV_GRAY2BGR);
-                for (int j = 0; j < imageSize.height * resizeFactor; j += 16*resizeFactor)
-                    cv::line(*pair, cv::Point(0, j),
-                             cv::Point(imageSize.width*2*resizeFactor, j),
-                             CV_RGB(0, 255, 0));
-                DisplayManager::showImages(
-                    {std::make_tuple("rectified", pair, 5000)});
-            }
-        }
-    }
+    precomputeMapForRemap(_calibrationData.intrinsic(LEFT),
+                          _calibrationData.intrinsic(RIGHT));
 }
 
 void StereoCalibrator::initIntrinsicsAndDistortions() noexcept
@@ -332,7 +219,73 @@ void StereoCalibrator::saveCalibrationResults() const noexcept
                 D2D_MAPPING_MATRIX_OUTPUT_FILE);
 }
 
-double StereoCalibrator::computeCalibrationError() noexcept
+void StereoCalibrator::chooseNextImage(const int leftOrRight) noexcept
+{
+    if (leftOrRight == LEFT)
+        _image = nextImage(_captureLeft);
+    else
+        _image = nextImage(_captureRight);
+}
+
+void StereoCalibrator::findAllCorners() noexcept
+{
+    if(_displayCorners) DisplayManager::createWindows({CORNERS_WINDOW_TITLE});
+
+    int leftOrRight;
+
+    for (int i = 0; i < _calibrationData.imagesAmount() * 2; i++)
+    {
+        leftOrRight = i % 2;
+        chooseNextImage(leftOrRight);
+        _grayImage = createGrayImage();
+        findCornersOnImage(_calibrationData,
+                           _points[leftOrRight]);
+    }
+}
+
+void StereoCalibrator::calibrateCameras() noexcept
+{
+    std::cout << RUNNING_CALIBRATION << std::flush;
+
+    cv::Mat stereoRotation(3, 3, CV_32FC1), stereoTranslation(3, 1, CV_32FC1);
+    cv::Mat essentialMatrix(3, 3, CV_32FC1), fundamentalMatrix(3, 3, CV_32FC1);
+
+    double error = cv::stereoCalibrate(
+        _objectPoints, _points[LEFT], _points[RIGHT],
+        _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
+        _calibrationData.intrinsic(RIGHT), _calibrationData.distortion(RIGHT),
+        _image -> size(), stereoRotation, stereoTranslation,
+        essentialMatrix, fundamentalMatrix,
+        cv::TermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
+        CV_CALIB_FIX_INTRINSIC);
+
+    _calibrationData.setStereoRotation(stereoRotation);
+    _calibrationData.setStereoTranslation(stereoTranslation);
+    _calibrationData.setEssentialMatrix(essentialMatrix);
+    _calibrationData.setFundamentalMatrix(fundamentalMatrix);
+
+    std::cout << CALIBRATION_DONE << std::endl;
+    showCalibrationError(error);
+}
+
+void StereoCalibrator::initOutputMapsAndImages() noexcept
+{
+    _rectifyMapX1 = MatSharedPtr(
+            new cv::Mat(_image -> size().height, _image -> size().width, CV_32F));
+    _rectifyMapY1 = MatSharedPtr(
+            new cv::Mat(_image -> size().height, _image -> size().width, CV_32F));
+    _rectifyMapX2 = MatSharedPtr(
+            new cv::Mat(_image -> size().height, _image -> size().width, CV_32F));
+    _rectifyMapY2 = MatSharedPtr(
+            new cv::Mat(_image -> size().height, _image -> size().width, CV_32F));
+    _remapedImage1 = MatSharedPtr(
+            new cv::Mat(_image -> size().height, _image -> size().width, CV_8U));
+    _remapedImage2 = MatSharedPtr(
+            new cv::Mat(_image -> size().height, _image -> size().width, CV_8U));
+
+}
+
+double StereoCalibrator::computeAverageCalibrationError() noexcept
 {
     vector<cv::Point3f> lines[2];
 
@@ -371,8 +324,8 @@ double StereoCalibrator::computeCalibrationError() noexcept
     return avgErr / totalPointsAmount;
 }
 
-void StereoCalibrator::showCalibrationError() noexcept
+void StereoCalibrator::showAverageCalibrationError() noexcept
 {
-    double err = computeCalibrationError();
+    double err = computeAverageCalibrationError();
     std::cout << "Average calibration error: " << err << "\n";
 }
