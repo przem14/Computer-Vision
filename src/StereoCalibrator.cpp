@@ -38,17 +38,19 @@ void StereoCalibrator::execute() noexcept
     if (_showUndistorted)
     {
         initOutputMapsAndImages();
-        MatSharedPtr pair;
 
         computingRectification();
 
         saveCalibrationResults();
 
         // RECTIFY THE IMAGES
-        pair = MatSharedPtr(new cv::Mat(_image -> size().height * RESIZE_FACTOR, _image -> size().width * 2 * RESIZE_FACTOR,
-                                        CV_8UC3));
+        MatSharedPtr pair(new cv::Mat(_image->size().height * RESIZE_FACTOR, 
+                                      _image->size().width * 2 * RESIZE_FACTOR,
+                                      CV_8UC3));
+
         _captureLeft.open(_imagesLeft);
         _captureRight.open(_imagesRight);
+
         for (int i = 0; i < _calibrationData.imagesAmount(); i++)
         {
             MatSharedPtr img1 = MatSharedPtr(new cv::Mat());
@@ -64,27 +66,55 @@ void StereoCalibrator::execute() noexcept
 
             if (!img1 -> empty() && !img2 -> empty())
             {
-                MatSharedPtr part, resized1 = _remapedImage1, resized2 = _remapedImage2;
-                cv::remap(*grayImage1, *_remapedImage1, *_rectifyMapX1, *_rectifyMapY1, cv::INTER_LINEAR);
-                cv::remap(*grayImage2, *_remapedImage2, *_rectifyMapX2, *_rectifyMapY2, cv::INTER_LINEAR);
+                MatSharedPtr part; 
+                MatSharedPtr resized1 = _remapedImage1;
+                MatSharedPtr resized2 = _remapedImage2;
+
+                cv::remap(*grayImage1, 
+                          *_remapedImage1, 
+                          *_rectifyMapX1, 
+                          *_rectifyMapY1, 
+                          cv::INTER_LINEAR);
+
+                cv::remap(*grayImage2,
+                          *_remapedImage2,
+                          *_rectifyMapX2,
+                          *_rectifyMapY2,
+                          cv::INTER_LINEAR);
+
                 cv::resize(*_remapedImage1,
                            *resized1,
-                           cv::Size(_image -> size().width * RESIZE_FACTOR, _image -> size().height * RESIZE_FACTOR),
+                           cv::Size(_image->size().width * RESIZE_FACTOR, 
+                                    _image -> size().height * RESIZE_FACTOR),
                            cv::INTER_AREA);
+
                 cv::resize(*_remapedImage2,
                            *resized2,
-                           cv::Size(_image -> size().width * RESIZE_FACTOR, _image -> size().height * RESIZE_FACTOR),
+                           cv::Size(_image -> size().width * RESIZE_FACTOR, 
+                                    _image -> size().height * RESIZE_FACTOR),
                            cv::INTER_AREA);
+
                 part = MatSharedPtr(new cv::Mat(
-                                pair -> colRange(0, _image -> size().width * RESIZE_FACTOR)));
+                        pair->colRange(
+                            0, 
+                            _image -> size().width * RESIZE_FACTOR)));
+
                 cv::cvtColor(*resized1, *part, CV_GRAY2BGR);
+
                 part = MatSharedPtr(new cv::Mat(
-                        pair -> colRange(_image -> size().width * RESIZE_FACTOR, _image -> size().width * 2 * RESIZE_FACTOR)));
+                        pair->colRange(
+                            _image -> size().width * RESIZE_FACTOR,
+                            _image -> size().width * 2 * RESIZE_FACTOR)));
                 cv::cvtColor(*resized2, *part, CV_GRAY2BGR);
-                for (int j = 0; j < _image -> size().height * RESIZE_FACTOR; j += 16 * RESIZE_FACTOR)
-                    cv::line(*pair, cv::Point(0, j),
-                             cv::Point(_image -> size().width * 2 * RESIZE_FACTOR, j),
-                             CV_RGB(0, 255, 0));
+
+                auto limit = _image->size().height * RESIZE_FACTOR;
+                for(size_t j = 0; j < limit; j += 16 * RESIZE_FACTOR)
+                    cv::line(
+                        *pair, 
+                        cv::Point(0, j),
+                        cv::Point(_image->size().width * 2 * RESIZE_FACTOR, j),
+                        CV_RGB(0, 255, 0));
+
                 DisplayManager::showImages(
                     {std::make_tuple("rectified", pair, 5000)});
             }
