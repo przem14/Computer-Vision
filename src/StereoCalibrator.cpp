@@ -39,7 +39,7 @@ void StereoCalibrator::execute() noexcept
     {
         initOutputMapsAndImages();
 
-        computingRectification();
+        computeRectification();
 
         saveCalibrationResults();
 
@@ -67,29 +67,29 @@ void StereoCalibrator::execute() noexcept
             if (!img1 -> empty() && !img2 -> empty())
             {
                 MatSharedPtr part;
-                MatSharedPtr resized1 = _remapedImage1;
-                MatSharedPtr resized2 = _remapedImage2;
+                MatSharedPtr _resized1 = _remappedImage1;
+                MatSharedPtr _resized2 = _remappedImage2;
 
                 cv::remap(*grayImage1,
-                          *_remapedImage1,
+                          *_remappedImage1,
                           *_rectifyMapX1,
                           *_rectifyMapY1,
                           cv::INTER_LINEAR);
 
                 cv::remap(*grayImage2,
-                          *_remapedImage2,
+                          *_remappedImage2,
                           *_rectifyMapX2,
                           *_rectifyMapY2,
                           cv::INTER_LINEAR);
 
-                cv::resize(*_remapedImage1,
-                           *resized1,
+                cv::resize(*_remappedImage1,
+                           *_resized1,
                            cv::Size(_image->size().width * RESIZE_FACTOR,
                                     _image -> size().height * RESIZE_FACTOR),
                            cv::INTER_AREA);
 
-                cv::resize(*_remapedImage2,
-                           *resized2,
+                cv::resize(*_remappedImage2,
+                           *_resized2,
                            cv::Size(_image -> size().width * RESIZE_FACTOR,
                                     _image -> size().height * RESIZE_FACTOR),
                            cv::INTER_AREA);
@@ -99,13 +99,13 @@ void StereoCalibrator::execute() noexcept
                             0,
                             _image -> size().width * RESIZE_FACTOR)));
 
-                cv::cvtColor(*resized1, *part, CV_GRAY2BGR);
+                cv::cvtColor(*_resized1, *part, CV_GRAY2BGR);
 
                 part = MatSharedPtr(new cv::Mat(
                         pair->colRange(
                             _image -> size().width * RESIZE_FACTOR,
                             _image -> size().width * 2 * RESIZE_FACTOR)));
-                cv::cvtColor(*resized2, *part, CV_GRAY2BGR);
+                cv::cvtColor(*_resized2, *part, CV_GRAY2BGR);
 
                 auto limit = _image->size().height * RESIZE_FACTOR;
                 for(size_t j = 0; j < limit; j += 16 * RESIZE_FACTOR)
@@ -119,7 +119,28 @@ void StereoCalibrator::execute() noexcept
                     {std::make_tuple("rectified", pair, 5000)});
             }
         }
+        computeAndDisplayDisparityMap();
     }
+}
+
+void StereoCalibrator::computeAndDisplayDisparityMap() noexcept
+{
+    MatSharedPtr _disparity(new cv::Mat(_image->size(), CV_16SC1));
+    MatSharedPtr _disparityBlackWhite(new cv::Mat());
+
+    cv::StereoBM _stereoBMState(cv::StereoBM::BASIC_PRESET, 256, 15);
+    _stereoBMState(*(_remappedImage1.get()),
+                   *(_remappedImage2.get()),
+                   *(_disparity.get()),
+                   CV_16S);
+
+    double _min, _max;
+    cv::minMaxLoc(*(_disparity.get()), &_min, &_max);
+    _disparity.get()->convertTo(*(_disparityBlackWhite.get()),
+                                CV_8UC1,
+                                255 / (_max - _min));
+    DisplayManager::showImages(
+        {std::make_tuple("disparity", _disparityBlackWhite, 100000)});
 }
 
 void StereoCalibrator::useBouguetsMethod() noexcept
@@ -132,7 +153,7 @@ void StereoCalibrator::useHartleyMethod() noexcept
     _isBouguetsMethodChoosen = false;
 }
 
-void StereoCalibrator::computingRectification() noexcept
+void StereoCalibrator::computeRectification() noexcept
 {
     if(_isBouguetsMethodChoosen)
         bouguetsMethod();
@@ -320,9 +341,9 @@ void StereoCalibrator::initOutputMapsAndImages() noexcept
             new cv::Mat(_image -> size().height, _image -> size().width, CV_32F));
     _rectifyMapY2 = MatSharedPtr(
             new cv::Mat(_image -> size().height, _image -> size().width, CV_32F));
-    _remapedImage1 = MatSharedPtr(
+    _remappedImage1 = MatSharedPtr(
             new cv::Mat(_image -> size().height, _image -> size().width, CV_8U));
-    _remapedImage2 = MatSharedPtr(
+    _remappedImage2 = MatSharedPtr(
             new cv::Mat(_image -> size().height, _image -> size().width, CV_8U));
 
 }

@@ -52,7 +52,7 @@ private:
                                const cv::Mat& cameraMatrix2) noexcept;
     void bouguetsMethod();
     void hartleysMethod();
-    void computingRectification() noexcept;
+    void computeRectification() noexcept;
 
     double computeAverageCalibrationError() noexcept;
     double undistortAndComputeEpilines(vector<cv::Point3f> lines[]) noexcept;
@@ -60,7 +60,7 @@ private:
                                     int index) noexcept;
     void showAverageCalibrationError() noexcept;
 
-
+    void computeAndDisplayDisparityMap() noexcept;
 
     bool _isBouguetsMethodChoosen = true;
 
@@ -76,9 +76,8 @@ private:
     MatSharedPtr _rectifyMapY1;
     MatSharedPtr _rectifyMapX2;
     MatSharedPtr _rectifyMapY2;
-    MatSharedPtr _remapedImage1;
-    MatSharedPtr _remapedImage2;
-
+    MatSharedPtr _remappedImage1;
+    MatSharedPtr _remappedImage2;
 
     const int LEFT  = 0;
     const int RIGHT = 1;
