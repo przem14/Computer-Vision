@@ -55,6 +55,9 @@ private:
     void computingRectification() noexcept;
 
     double computeAverageCalibrationError() noexcept;
+    double undistortAndComputeEpilines(vector<cv::Point3f> lines[]) noexcept;
+    double computeErrorForImagePair(vector<cv::Point3f> lines[],
+                                    int index) noexcept;
     void showAverageCalibrationError() noexcept;
 
 

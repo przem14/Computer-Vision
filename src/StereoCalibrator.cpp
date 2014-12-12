@@ -16,7 +16,7 @@ StereoCalibrator::StereoCalibrator(const std::string imagesLeft,
     int leftFramesAmount  = _captureLeft.get(CV_CAP_PROP_FRAME_COUNT);
     int rightFramesAmount = _captureRight.get(CV_CAP_PROP_FRAME_COUNT);
 
-    if(leftFramesAmount != rightFramesAmount) 
+    if(leftFramesAmount != rightFramesAmount)
         throw FramesAmountMatchError();
     initIntrinsicsAndDistortions();
 }
@@ -44,7 +44,7 @@ void StereoCalibrator::execute() noexcept
         saveCalibrationResults();
 
         // RECTIFY THE IMAGES
-        MatSharedPtr pair(new cv::Mat(_image->size().height * RESIZE_FACTOR, 
+        MatSharedPtr pair(new cv::Mat(_image->size().height * RESIZE_FACTOR,
                                       _image->size().width * 2 * RESIZE_FACTOR,
                                       CV_8UC3));
 
@@ -66,14 +66,14 @@ void StereoCalibrator::execute() noexcept
 
             if (!img1 -> empty() && !img2 -> empty())
             {
-                MatSharedPtr part; 
+                MatSharedPtr part;
                 MatSharedPtr resized1 = _remapedImage1;
                 MatSharedPtr resized2 = _remapedImage2;
 
-                cv::remap(*grayImage1, 
-                          *_remapedImage1, 
-                          *_rectifyMapX1, 
-                          *_rectifyMapY1, 
+                cv::remap(*grayImage1,
+                          *_remapedImage1,
+                          *_rectifyMapX1,
+                          *_rectifyMapY1,
                           cv::INTER_LINEAR);
 
                 cv::remap(*grayImage2,
@@ -84,19 +84,19 @@ void StereoCalibrator::execute() noexcept
 
                 cv::resize(*_remapedImage1,
                            *resized1,
-                           cv::Size(_image->size().width * RESIZE_FACTOR, 
+                           cv::Size(_image->size().width * RESIZE_FACTOR,
                                     _image -> size().height * RESIZE_FACTOR),
                            cv::INTER_AREA);
 
                 cv::resize(*_remapedImage2,
                            *resized2,
-                           cv::Size(_image -> size().width * RESIZE_FACTOR, 
+                           cv::Size(_image -> size().width * RESIZE_FACTOR,
                                     _image -> size().height * RESIZE_FACTOR),
                            cv::INTER_AREA);
 
                 part = MatSharedPtr(new cv::Mat(
                         pair->colRange(
-                            0, 
+                            0,
                             _image -> size().width * RESIZE_FACTOR)));
 
                 cv::cvtColor(*resized1, *part, CV_GRAY2BGR);
@@ -110,7 +110,7 @@ void StereoCalibrator::execute() noexcept
                 auto limit = _image->size().height * RESIZE_FACTOR;
                 for(size_t j = 0; j < limit; j += 16 * RESIZE_FACTOR)
                     cv::line(
-                        *pair, 
+                        *pair,
                         cv::Point(0, j),
                         cv::Point(_image->size().width * 2 * RESIZE_FACTOR, j),
                         CV_RGB(0, 255, 0));
@@ -134,9 +134,9 @@ void StereoCalibrator::useHartleyMethod() noexcept
 
 void StereoCalibrator::computingRectification() noexcept
 {
-    if(_isBouguetsMethodChoosen) 
+    if(_isBouguetsMethodChoosen)
         bouguetsMethod();
-    else 
+    else
         hartleysMethod();
 }
 
@@ -331,6 +331,15 @@ double StereoCalibrator::computeAverageCalibrationError() noexcept
 {
     vector<cv::Point3f> lines[2];
 
+    double avgErr = undistortAndComputeEpilines(lines);
+    int totalPointsAmount = _calibrationData.imagesAmount() *
+                            _calibrationData.pointsOnBoardAmount();
+    return avgErr / totalPointsAmount;
+}
+
+double StereoCalibrator::undistortAndComputeEpilines(vector<cv::Point3f> lines[])
+        noexcept
+{
     double avgErr = 0;
     for (int i = 0; i < _calibrationData.imagesAmount(); i++ )
     {
@@ -352,18 +361,23 @@ double StereoCalibrator::computeAverageCalibrationError() noexcept
         cv::computeCorrespondEpilines(_points[RIGHT][i], 2,
                                       _calibrationData.fundamentalMatrix(),
                                       lines[RIGHT]);
-        for (unsigned j = 0; j < _calibrationData.pointsOnBoardAmount(); j++)
-        {
-            double err = std::abs(_points[LEFT][i][j].x*lines[RIGHT][j].x +
-                _points[LEFT][i][j].y*lines[RIGHT][j].y + lines[RIGHT][j].z)
-                + std::abs(_points[RIGHT][i][j].x*lines[LEFT][j].x +
-                _points[RIGHT][i][j].y*lines[LEFT][j].y + lines[LEFT][j].z);
-            avgErr += err;
-        }
+        avgErr += computeErrorForImagePair(lines, i);
     }
-    int totalPointsAmount = _calibrationData.imagesAmount() *
-                            _calibrationData.pointsOnBoardAmount();
-    return avgErr / totalPointsAmount;
+    return avgErr;
+}
+
+double StereoCalibrator::computeErrorForImagePair(vector<cv::Point3f> lines[],
+                                                  int index) noexcept
+{
+    double err = 0;
+    for (unsigned j = 0; j < _calibrationData.pointsOnBoardAmount(); j++)
+    {
+        err += std::abs(_points[LEFT][index][j].x*lines[RIGHT][j].x +
+               _points[LEFT][index][j].y*lines[RIGHT][j].y + lines[RIGHT][j].z)
+               + std::abs(_points[RIGHT][index][j].x*lines[LEFT][j].x +
+               _points[RIGHT][index][j].y*lines[LEFT][j].y + lines[LEFT][j].z);
+    }
+    return err;
 }
 
 void StereoCalibrator::showAverageCalibrationError() noexcept
