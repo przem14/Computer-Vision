@@ -53,10 +53,6 @@ private:
     void bouguetsMethod();
     void hartleysMethod();
     void computeRectification() noexcept;
-    void createAndDisplayRectifiedPairs() noexcept;
-    void createSingleRectifiedPair(MatSharedPtr &_grayImage1,
-                                   MatSharedPtr &_grayImage2,
-                                   MatSharedPtr &_pair) noexcept;
 
     double computeAverageCalibrationError() noexcept;
     double undistortAndComputeEpilines(vector<cv::Point3f> lines[]) noexcept;
