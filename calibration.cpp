@@ -3,8 +3,8 @@
 
 int main()
 {
-    std::string pathL = "imagesA\\images\\left\\image%02d.jpg";
-    std::string pathR = "imagesA\\images\\right\\image%02d.jpg";
+    std::string pathL = "./images/left/image%02d.jpg";
+    std::string pathR = "./images/right/image%02d.jpg";
 
 
     Calibrator calibratorL(20, 9, 6);

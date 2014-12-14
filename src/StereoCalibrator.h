@@ -29,9 +29,31 @@ public:
     void execute() noexcept;
 
     void useBouguetsMethod() noexcept;
-    void useHartleyMethod()  noexcept;
+    void useHartleyMethod() noexcept;
 
 private:
+    cv::Mat createPairImage(const cv::Mat& leftImage,
+                            const cv::Mat& rightImage,
+                            const cv::Size& size) const noexcept;
+
+    cv::Mat columnRange(const cv::Mat& image, 
+                        const int startColumn,
+                        const int endColumn) const noexcept;
+
+    cv::Mat remapImage(const cv::Mat& image) const noexcept;
+    cv::Mat resizeImage(const cv::Mat& image) const noexcept;
+    cv::Mat convertToBGRImage(const cv::Mat& grayImage, 
+                              const cv::Size& newImageSize) const noexcept;
+
+    cv::Mat createImageWithHorizontalLines(const cv::Mat& image) const noexcept;
+ 
+    cv::Mat captureLeftGrayImage() noexcept;
+    cv::Mat captureRightGrayImage()  noexcept;
+
+    void prepareAndDisplayPairImage(const cv::Mat& firstGrayImage,
+                                    const cv::Mat& secondGrayImage) 
+        const noexcept;
+
     void initIntrinsicsAndDistortions() noexcept;
 
     void loadSingleCalibrationResults(const std::string intrinsicL,
@@ -60,6 +82,8 @@ private:
                                     int index) noexcept;
     void showAverageCalibrationError() noexcept;
 
+    void computeAndDisplayRectification() noexcept;
+    void rectifyAndDisplayAllImages() noexcept;
     void computeAndDisplayDisparityMap() noexcept;
 
     bool _isBouguetsMethodChoosen = true;

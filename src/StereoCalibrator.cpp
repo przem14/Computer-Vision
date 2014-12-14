@@ -34,93 +34,149 @@ void StereoCalibrator::execute() noexcept
     calibrateCameras();
     showAverageCalibrationError();
 
-    //COMPUTE AND DISPLAY RECTIFICATION
-    if (_showUndistorted)
+    initOutputMapsAndImages();
+    computeAndDisplayRectification();
+    computeAndDisplayDisparityMap();
+
+    saveCalibrationResults();
+}
+
+void StereoCalibrator::computeAndDisplayRectification() noexcept
+{
+    computeRectification();
+    rectifyAndDisplayAllImages();
+}
+
+void StereoCalibrator::rectifyAndDisplayAllImages() noexcept
+{
+    _captureLeft.open(_imagesLeft);
+    _captureRight.open(_imagesRight);
+
+    for(int i = 0; i < _calibrationData.imagesAmount(); i++)
     {
-        initOutputMapsAndImages();
+        auto firstGrayImage  = captureLeftGrayImage();
+        auto secondGrayImage = captureRightGrayImage();
 
-        computeRectification();
-
-        saveCalibrationResults();
-
-        // RECTIFY THE IMAGES
-        MatSharedPtr pair(new cv::Mat(_image->size().height * RESIZE_FACTOR,
-                                      _image->size().width * 2 * RESIZE_FACTOR,
-                                      CV_8UC3));
-
-        _captureLeft.open(_imagesLeft);
-        _captureRight.open(_imagesRight);
-
-        for (int i = 0; i < _calibrationData.imagesAmount(); i++)
-        {
-            MatSharedPtr img1 = MatSharedPtr(new cv::Mat());
-            MatSharedPtr img2 = MatSharedPtr(new cv::Mat());
-
-            _captureLeft.read(*img1);
-            MatSharedPtr grayImage1(new cv::Mat(_image -> size(), CV_8UC3));
-            cv::cvtColor(*img1, *grayImage1, CV_BGR2GRAY);
-
-            _captureRight.read(*img2);
-            MatSharedPtr grayImage2(new cv::Mat(_image -> size(), CV_8UC3));
-            cv::cvtColor(*img2, *grayImage2, CV_BGR2GRAY);
-
-            if (!img1 -> empty() && !img2 -> empty())
-            {
-                MatSharedPtr part;
-                MatSharedPtr _resized1 = _remappedImage1;
-                MatSharedPtr _resized2 = _remappedImage2;
-
-                cv::remap(*grayImage1,
-                          *_remappedImage1,
-                          *_rectifyMapX1,
-                          *_rectifyMapY1,
-                          cv::INTER_LINEAR);
-
-                cv::remap(*grayImage2,
-                          *_remappedImage2,
-                          *_rectifyMapX2,
-                          *_rectifyMapY2,
-                          cv::INTER_LINEAR);
-
-                cv::resize(*_remappedImage1,
-                           *_resized1,
-                           cv::Size(_image->size().width * RESIZE_FACTOR,
-                                    _image -> size().height * RESIZE_FACTOR),
-                           cv::INTER_AREA);
-
-                cv::resize(*_remappedImage2,
-                           *_resized2,
-                           cv::Size(_image -> size().width * RESIZE_FACTOR,
-                                    _image -> size().height * RESIZE_FACTOR),
-                           cv::INTER_AREA);
-
-                part = MatSharedPtr(new cv::Mat(
-                        pair->colRange(
-                            0,
-                            _image -> size().width * RESIZE_FACTOR)));
-
-                cv::cvtColor(*_resized1, *part, CV_GRAY2BGR);
-
-                part = MatSharedPtr(new cv::Mat(
-                        pair->colRange(
-                            _image -> size().width * RESIZE_FACTOR,
-                            _image -> size().width * 2 * RESIZE_FACTOR)));
-                cv::cvtColor(*_resized2, *part, CV_GRAY2BGR);
-
-                auto limit = _image->size().height * RESIZE_FACTOR;
-                for(size_t j = 0; j < limit; j += 16 * RESIZE_FACTOR)
-                    cv::line(
-                        *pair,
-                        cv::Point(0, j),
-                        cv::Point(_image->size().width * 2 * RESIZE_FACTOR, j),
-                        CV_RGB(0, 255, 0));
-
-                DisplayManager::showImages(
-                    {std::make_tuple("rectified", pair, 5000)});
-            }
-        }
-        computeAndDisplayDisparityMap();
+        if(!firstGrayImage.empty() && !secondGrayImage.empty())
+            prepareAndDisplayPairImage(firstGrayImage, secondGrayImage);
     }
+}
+
+cv::Mat StereoCalibrator::captureLeftGrayImage() noexcept
+{
+    cv::Mat image, grayImage(_image->size(), CV_8UC3);
+
+    _captureLeft.read(image);
+    cv::cvtColor(image, grayImage, CV_BGR2GRAY);
+    
+    return grayImage;
+}
+
+cv::Mat StereoCalibrator::captureRightGrayImage() noexcept
+{
+    cv::Mat image, grayImage(_image->size(), CV_8UC3);
+
+    _captureRight.read(image);
+    cv::cvtColor(image, grayImage, CV_BGR2GRAY);
+    
+    return grayImage;
+}
+
+void StereoCalibrator::prepareAndDisplayPairImage(
+        const cv::Mat& firstGrayImage,
+        const cv::Mat& secondGrayImage) const noexcept
+{
+    auto resizedPairImageHeight = _image->size().height * RESIZE_FACTOR;
+    auto resizedPairImageWidth  = _image->size().width * 2 * RESIZE_FACTOR;
+    auto pairImage
+        = createPairImage(resizeImage(remapImage(firstGrayImage)),
+                          resizeImage(remapImage(secondGrayImage)),
+                          cv::Size(resizedPairImageWidth, 
+                                   resizedPairImageHeight));
+
+    pairImage = createImageWithHorizontalLines(pairImage); 
+
+    DisplayManager::showImages(
+        {std::make_tuple("rectified", 
+                         std::make_shared<cv::Mat>(pairImage), 
+                         5000)});
+}
+
+cv::Mat StereoCalibrator::createImageWithHorizontalLines(const cv::Mat& image)
+    const noexcept
+{
+    auto resultImage = image.clone();
+    auto resizedImageWidth = _image->size().width * 2 * RESIZE_FACTOR;
+    auto resizedImageHeight = image.size().height;
+    auto jump = 16 * RESIZE_FACTOR;
+
+    for(size_t j = 0; j < resizedImageHeight; j += jump)
+        cv::line(resultImage,
+                 cv::Point(0, j),
+                 cv::Point(resizedImageWidth, j),
+                 CV_RGB(0, 255, 0));
+
+    return resultImage;
+}
+cv::Mat StereoCalibrator::createPairImage(const cv::Mat& leftImage,
+                                          const cv::Mat& rightImage,
+                                          const cv::Size& size) const noexcept
+{
+    cv::Mat pairImage(size, CV_8UC3);
+    auto convertedLeftImage  = convertToBGRImage(leftImage, leftImage.size());
+    auto convertedRightImage = convertToBGRImage(rightImage, rightImage.size());
+    auto halfOfWidth = size.width / 2;
+
+    convertedLeftImage.copyTo(columnRange(pairImage, 0, halfOfWidth));
+    convertedRightImage.copyTo(columnRange(pairImage, halfOfWidth, size.width));
+
+    return pairImage;
+}
+
+cv::Mat StereoCalibrator::convertToBGRImage(const cv::Mat& grayImage, 
+                                            const cv::Size& newImageSize)
+    const noexcept
+{
+    cv::Mat bgrImage(newImageSize, CV_8UC3);
+
+    cv::cvtColor(grayImage, bgrImage, CV_GRAY2BGR);
+
+    return bgrImage;
+} 
+
+cv::Mat StereoCalibrator::columnRange(const cv::Mat& image, 
+                                      const int startColumn,
+                                      const int endColumn) const noexcept
+{
+    return image.colRange(startColumn, endColumn);
+}
+
+cv::Mat StereoCalibrator::remapImage(const cv::Mat& image) 
+    const noexcept
+{
+    cv::Mat remappedImage;
+
+    cv::remap(image, 
+              remappedImage, 
+              *_rectifyMapX1, 
+              *_rectifyMapY1, 
+              cv::INTER_LINEAR);
+
+    return remappedImage;
+}
+
+cv::Mat StereoCalibrator::resizeImage(const cv::Mat& image)
+    const noexcept
+{
+    cv::Mat resizedImage;
+
+    cv::resize(image,
+               resizedImage,
+               cv::Size(_image->size().width * RESIZE_FACTOR, 
+                        _image -> size().height * RESIZE_FACTOR),
+               cv::INTER_AREA);
+    
+    return resizedImage;
 }
 
 void StereoCalibrator::computeAndDisplayDisparityMap() noexcept
