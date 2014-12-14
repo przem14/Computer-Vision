@@ -40,7 +40,9 @@ private:
                         const int startColumn,
                         const int endColumn) const noexcept;
 
-    cv::Mat remapImage(const cv::Mat& image) const noexcept;
+    cv::Mat remapImage(const cv::Mat& image,
+                       const cv::Mat& rectifyMapX1,
+                       const cv::Mat& rectifyMapY1) const noexcept;
     cv::Mat resizeImage(const cv::Mat& image) const noexcept;
     cv::Mat convertToBGRImage(const cv::Mat& grayImage, 
                               const cv::Size& newImageSize) const noexcept;

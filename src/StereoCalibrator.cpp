@@ -89,8 +89,12 @@ void StereoCalibrator::prepareAndDisplayPairImage(
     auto resizedPairImageHeight = _image->size().height * RESIZE_FACTOR;
     auto resizedPairImageWidth  = _image->size().width * 2 * RESIZE_FACTOR;
     auto pairImage
-        = createPairImage(resizeImage(remapImage(firstGrayImage)),
-                          resizeImage(remapImage(secondGrayImage)),
+        = createPairImage(resizeImage(remapImage(firstGrayImage,
+                                                 *_rectifyMapX1,
+                                                 *_rectifyMapY1)),
+                          resizeImage(remapImage(secondGrayImage,
+                                                 *_rectifyMapX2,
+                                                 *_rectifyMapY2)),
                           cv::Size(resizedPairImageWidth, 
                                    resizedPairImageHeight));
 
@@ -151,15 +155,17 @@ cv::Mat StereoCalibrator::columnRange(const cv::Mat& image,
     return image.colRange(startColumn, endColumn);
 }
 
-cv::Mat StereoCalibrator::remapImage(const cv::Mat& image) 
+cv::Mat StereoCalibrator::remapImage(const cv::Mat& image,
+                                     const cv::Mat& rectifyMapX1,
+                                     const cv::Mat& rectifyMapY1)
     const noexcept
 {
     cv::Mat remappedImage;
 
     cv::remap(image, 
               remappedImage, 
-              *_rectifyMapX1, 
-              *_rectifyMapY1, 
+              rectifyMapX1,
+              rectifyMapY1,
               cv::INTER_LINEAR);
 
     return remappedImage;
