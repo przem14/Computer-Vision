@@ -78,6 +78,8 @@ private:
     void hartleysMethod();
     void computeRectification() noexcept;
 
+    void saveRectifyMaps() const noexcept;
+
     double computeAverageCalibrationError() noexcept;
     double undistortAndComputeEpilines(vector<cv::Point3f> lines[]) noexcept;
     double computeErrorForImagePair(vector<cv::Point3f> lines[],
@@ -119,6 +121,17 @@ private:
     const std::string RECT_TRANSFORMS_OUTPUT_FILE = "rect_transforms.yml";
     const std::string PROJECTION_MATRICES_OUTPUT_FILE = "projection_matrices.yml";
     const std::string D2D_MAPPING_MATRIX_OUTPUT_FILE = "d2d_mapping_matrix.yml";
+    const std::string RECTIFY_MAPS_OUTPUT_FILE = "rectify_maps.yml";
+
+    const std::string RECTIFY_MAP_X1_OUTPUT_FILE = "rectify_map_x1.jpg";
+    const std::string RECTIFY_MAP_Y1_OUTPUT_FILE = "rectify_map_y1.jpg";
+    const std::string RECTIFY_MAP_X2_OUTPUT_FILE = "rectify_map_x2.jpg";
+    const std::string RECTIFY_MAP_Y2_OUTPUT_FILE = "rectify_map_y2.jpg";
+
+    const std::string RECTIFY_MAP_X1_TITLE = "Rectify Map X1";
+    const std::string RECTIFY_MAP_Y1_TITLE = "Rectify Map Y1";
+    const std::string RECTIFY_MAP_X2_TITLE = "Rectify Map X2";
+    const std::string RECTIFY_MAP_Y2_TITLE = "Rectify Map Y2";
 
     const std::string RUNNING_CALIBRATION = "Running stereo calibration ...";
     const std::string CALIBRATION_DONE = " done";

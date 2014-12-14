@@ -191,16 +191,16 @@ void StereoCalibrator::computeAndDisplayDisparityMap() noexcept
     MatSharedPtr _disparityBlackWhite(new cv::Mat());
 
     cv::StereoBM _stereoBMState(cv::StereoBM::BASIC_PRESET, 256, 15);
-    _stereoBMState(*(_remappedImage1.get()),
-                   *(_remappedImage2.get()),
-                   *(_disparity.get()),
+    _stereoBMState(*_remappedImage1,
+                   *_remappedImage2,
+                   *_disparity,
                    CV_16S);
 
     double _min, _max;
-    cv::minMaxLoc(*(_disparity.get()), &_min, &_max);
-    _disparity.get()->convertTo(*(_disparityBlackWhite.get()),
-                                CV_8UC1,
-                                255 / (_max - _min));
+    cv::minMaxLoc(*_disparity, &_min, &_max);
+    _disparity -> convertTo(*_disparityBlackWhite,
+                            CV_8UC1,
+                            255 / (_max - _min));
     DisplayManager::showImages(
         {std::make_tuple("disparity", _disparityBlackWhite, 100000)});
 }
@@ -221,6 +221,22 @@ void StereoCalibrator::computeRectification() noexcept
         bouguetsMethod();
     else
         hartleysMethod();
+    saveRectifyMaps();
+}
+
+void StereoCalibrator::saveRectifyMaps() const noexcept
+{
+    cv::imwrite(RECTIFY_MAP_X1_OUTPUT_FILE, *_rectifyMapX1);
+    cv::imwrite(RECTIFY_MAP_Y1_OUTPUT_FILE, *_rectifyMapY1);
+    cv::imwrite(RECTIFY_MAP_X2_OUTPUT_FILE, *_rectifyMapX2);
+    cv::imwrite(RECTIFY_MAP_Y2_OUTPUT_FILE, *_rectifyMapY2);
+
+    cv::FileStorage fileStorage(RECTIFY_MAPS_OUTPUT_FILE, cv::FileStorage::WRITE);
+    fileStorage << RECTIFY_MAP_X1_TITLE << RECTIFY_MAP_X1_OUTPUT_FILE;
+    fileStorage << RECTIFY_MAP_Y1_TITLE << RECTIFY_MAP_Y1_OUTPUT_FILE;
+    fileStorage << RECTIFY_MAP_X2_TITLE << RECTIFY_MAP_X2_OUTPUT_FILE;
+    fileStorage << RECTIFY_MAP_Y2_TITLE << RECTIFY_MAP_Y2_OUTPUT_FILE;
+    fileStorage.release();
 }
 
 void StereoCalibrator::precomputeMapForRemap(
