@@ -15,15 +15,35 @@ void DisparityProvider::loadRectifyMaps(std::string& pathRoRectifyMaps) noexcept
     fileStorage.release();
 }
 
-void DisparityProvider::prepareImages(std::string &leftImage,
-                                      std::string &rightImage) noexcept
+void DisparityProvider::computeAndDisplayDisparityMap(
+        std::string& leftImage, std::string& rightImage) noexcept
+{
+    prepareImages(leftImage, rightImage);
+    computeDisparityMap();
+
+    DisplayManager::createWindows({DISPARITY_WINDOW_TITLE});
+    DisplayManager::showImages(
+        {std::make_tuple(DISPARITY_WINDOW_TITLE,
+                         std::make_shared<cv::Mat>(_disparityBlackWhite),
+                         0)});
+}
+
+void DisparityProvider::computeDisparityMap() noexcept
+{
+    _stereoBMState = cv::StereoBM(cv::StereoBM::BASIC_PRESET, 256, 15);
+    _stereoBMState(_leftImage, _rightImage, _disparity, CV_16S);
+    cv::normalize(_disparity, _disparityBlackWhite, 0, 255, CV_MINMAX, CV_8U);
+}
+
+void DisparityProvider::prepareImages(std::string& leftImage,
+                                      std::string& rightImage) noexcept
 {
     loadGrayImages(leftImage, rightImage);
     remapImages();
 }
 
-void DisparityProvider::loadGrayImages(std::string &leftImage,
-                                       std::string &rightImage) noexcept
+void DisparityProvider::loadGrayImages(std::string& leftImage,
+                                       std::string& rightImage) noexcept
 {
     cv::Mat image;
     image  = cv::imread(leftImage);

@@ -36,7 +36,6 @@ void StereoCalibrator::execute() noexcept
 
     initOutputMapsAndImages();
     computeAndDisplayRectification();
-    computeAndDisplayDisparityMap();
 
     saveCalibrationResults();
 }
@@ -183,26 +182,6 @@ cv::Mat StereoCalibrator::resizeImage(const cv::Mat& image)
                cv::INTER_AREA);
     
     return resizedImage;
-}
-
-void StereoCalibrator::computeAndDisplayDisparityMap() noexcept
-{
-    MatSharedPtr _disparity(new cv::Mat(_image->size(), CV_16SC1));
-    MatSharedPtr _disparityBlackWhite(new cv::Mat());
-
-    cv::StereoBM _stereoBMState(cv::StereoBM::BASIC_PRESET, 256, 15);
-    _stereoBMState(*_remappedImage1,
-                   *_remappedImage2,
-                   *_disparity,
-                   CV_16S);
-
-    double _min, _max;
-    cv::minMaxLoc(*_disparity, &_min, &_max);
-    _disparity -> convertTo(*_disparityBlackWhite,
-                            CV_8UC1,
-                            255 / (_max - _min));
-    DisplayManager::showImages(
-        {std::make_tuple("disparity", _disparityBlackWhite, 100000)});
 }
 
 void StereoCalibrator::useBouguetsMethod() noexcept

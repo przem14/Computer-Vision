@@ -88,7 +88,6 @@ private:
 
     void computeAndDisplayRectification() noexcept;
     void rectifyAndDisplayAllImages() noexcept;
-    void computeAndDisplayDisparityMap() noexcept;
 
     bool _isBouguetsMethodChoosen = true;
 
