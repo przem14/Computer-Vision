@@ -1,7 +1,7 @@
 #include "DisparityProvider.h"
 
 DisparityProvider::DisparityProvider(std::string& pathToRectifyMaps) noexcept
-    : _stereoBMState(1,768,11,200,255,1,0,0,0,0,false)
+    : _stereoBMState(0,768,9,200,255,1)
 {
     loadRectifyMaps(pathToRectifyMaps);
 }
@@ -22,11 +22,8 @@ void DisparityProvider::computeAndDisplayDisparityMap(
     prepareImages(leftImage, rightImage);
     computeDisparityMap();
 
-    DisplayManager::createWindows({DISPARITY_WINDOW_TITLE});
-    DisplayManager::showImages(
-        {std::make_tuple(DISPARITY_WINDOW_TITLE,
-                         std::make_shared<cv::Mat>(_disparityBlackWhite),
-                         1)});
+    updateMapWindow();
+    showOptionsWindow();
 
     addSliders();
     cv::waitKey(0);
@@ -76,20 +73,66 @@ void DisparityProvider::callbackMinDisparitySlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
     dispProvider->_stereoBMState.minDisparity = newValue - 50;
-    dispProvider->updateMapWindow();
 }
 
 void DisparityProvider::callbackSADWindowsSizeSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
     dispProvider->_stereoBMState.SADWindowSize = 2 * newValue + 5;
-    dispProvider->updateMapWindow();
+}
+
+void DisparityProvider::callbackDisp12MaxDiffSlider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.disp12MaxDiff = newValue;
+}
+
+void DisparityProvider::callbackPreFilterCapSlider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.preFilterCap = newValue;
+}
+
+void DisparityProvider::callbackUniquenessRatioSlider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.uniquenessRatio = newValue;
+}
+
+void DisparityProvider::callbackSpecleWindowSizeSlider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.speckleWindowSize = newValue;
+}
+
+void DisparityProvider::callbackSpecleRangeSlider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.speckleRange = newValue;
+}
+
+void DisparityProvider::callbackSmoothnessPar1Slider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.P1 = newValue;
+}
+
+void DisparityProvider::callbackSmoothnessPar2Slider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.P2 = newValue;
+}
+
+void DisparityProvider::callbackNumDisparitiesSlider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.numberOfDisparities = 16 * newValue;
 }
 
 void DisparityProvider::callbackGenerateSlider(int, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    std::cout << "\nGenerating disparity map... ";
+    std::cout << "Generating disparity map... ";
     dispProvider->computeDisparityMap();
     std::cout << "done\n";
     dispProvider->updateMapWindow();
@@ -98,20 +141,60 @@ void DisparityProvider::callbackGenerateSlider(int, void* object)
 void DisparityProvider::addSliders() noexcept
 {
     cv::createTrackbar(GENERATE_SLIDER_TITLE,
-                       DISPARITY_WINDOW_TITLE,
+                       OPTIONS_WINDOW_TITLE,
                        &_generateSlider,
                        1,
                        callbackGenerateSlider, this);
     cv::createTrackbar(MIN_DISPARITY_TRACKBAR_TITLE,
-                       DISPARITY_WINDOW_TITLE,
+                       OPTIONS_WINDOW_TITLE,
                        &_minDisparitySlider,
-                       _maxDisparity,
+                       _maxMinDisparity,
                        callbackMinDisparitySlider, this);
+    cv::createTrackbar(NUM_DISPARITIES_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_numDisparitiesSlider,
+                       _maxNumDisparities,
+                       callbackNumDisparitiesSlider, this);
     cv::createTrackbar(SAD_WINDOWS_SIZE_TRACKBAR_TITLE,
-                       DISPARITY_WINDOW_TITLE,
+                       OPTIONS_WINDOW_TITLE,
                        &_SADWindowSizeSlider,
                        _maxSADWindowSize,
                        callbackSADWindowsSizeSlider, this);
+    cv::createTrackbar(DISP12_MAX_DIFF_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_disp12MaxDiffSlider,
+                       _maxDisp12MaxDiff,
+                       callbackDisp12MaxDiffSlider, this);
+    cv::createTrackbar(PREFILTER_CAP_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_preFilterCapSlider,
+                       _maxPreFilterCap,
+                       callbackPreFilterCapSlider, this);
+    cv::createTrackbar(UNIQUENESS_RATIO_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_uniquenessRatioSlider,
+                       _maxUniquenessRatio,
+                       callbackUniquenessRatioSlider, this);
+    cv::createTrackbar(SPECKLE_WINDOW_SIZE_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_speckleWindowSizeSlider,
+                       _maxSpeckleWindowSize,
+                       callbackSpecleWindowSizeSlider, this);
+    cv::createTrackbar(SPECKLE_RANGE_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_speckleRangeSlider,
+                       _maxSpeckleRange,
+                       callbackSpecleRangeSlider, this);
+    cv::createTrackbar(SMOOTHNESS_PAR1_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_smoothnessPar1Slider,
+                       _maxSmoothnessPar1,
+                       callbackSmoothnessPar1Slider, this);
+    cv::createTrackbar(SMOOTHNESS_PAR2_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_smoothnessPar2Slider,
+                       _maxSmoothnessPar2,
+                       callbackSmoothnessPar2Slider, this);
 }
 
 void DisparityProvider::updateMapWindow() noexcept
@@ -122,11 +205,21 @@ void DisparityProvider::updateMapWindow() noexcept
              1)});
 }
 
+void DisparityProvider::showOptionsWindow() noexcept
+{
+    MatSharedPtr emptyImage =
+        MatSharedPtr(new cv::Mat(50, _leftImage.size().width, CV_32F));
+    DisplayManager::showImages(
+        {std::make_tuple(OPTIONS_WINDOW_TITLE,
+                         emptyImage,
+                         1)});
+}
+
 void DisparityProvider::disparityConfigurator() noexcept
 {
     cv::createTrackbar(MIN_DISPARITY_TRACKBAR_TITLE,
                        DISPARITY_WINDOW_TITLE,
-                       &_minDisparitySlider, _maxDisparity);
+                       &_minDisparitySlider, _maxMinDisparity);
     cv::createTrackbar(SAD_WINDOWS_SIZE_TRACKBAR_TITLE,
                        DISPARITY_WINDOW_TITLE,
                        &_SADWindowSizeSlider, _maxSADWindowSize);
