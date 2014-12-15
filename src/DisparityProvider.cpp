@@ -1,7 +1,7 @@
 #include "DisparityProvider.h"
 
 DisparityProvider::DisparityProvider(std::string& pathToRectifyMaps) noexcept
-    : _stereoBMState(cv::StereoBM::BASIC_PRESET, 256, 15)
+    : _stereoBMState(1,768,11,200,255,1,0,0,0,0,false)
 {
     loadRectifyMaps(pathToRectifyMaps);
 }
@@ -28,12 +28,13 @@ void DisparityProvider::computeAndDisplayDisparityMap(
                          std::make_shared<cv::Mat>(_disparityBlackWhite),
                          1)});
 
-    disparityConfigurator();
+    addSliders();
+    cv::waitKey(0);
 }
 
 void DisparityProvider::computeDisparityMap() noexcept
 {
-    _stereoBMState(_leftImage, _rightImage, _disparity, CV_16S);
+    _stereoBMState(_leftImage, _rightImage, _disparity);
     cv::normalize(_disparity, _disparityBlackWhite, 0, 255, CV_MINMAX, CV_8U);
 }
 
@@ -71,6 +72,56 @@ cv::Mat DisparityProvider::remapImage(cv::Mat& image,
     return remappedImage;
 }
 
+void DisparityProvider::callbackMinDisparitySlider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.minDisparity = newValue - 50;
+    dispProvider->updateMapWindow();
+}
+
+void DisparityProvider::callbackSADWindowsSizeSlider(int newValue, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    dispProvider->_stereoBMState.SADWindowSize = 2 * newValue + 5;
+    dispProvider->updateMapWindow();
+}
+
+void DisparityProvider::callbackGenerateSlider(int, void* object)
+{
+    DisparityProvider* dispProvider = (DisparityProvider*) object;
+    std::cout << "\nGenerating disparity map... ";
+    dispProvider->computeDisparityMap();
+    std::cout << "done\n";
+    dispProvider->updateMapWindow();
+}
+
+void DisparityProvider::addSliders() noexcept
+{
+    cv::createTrackbar(GENERATE_SLIDER_TITLE,
+                       DISPARITY_WINDOW_TITLE,
+                       &_generateSlider,
+                       1,
+                       callbackGenerateSlider, this);
+    cv::createTrackbar(MIN_DISPARITY_TRACKBAR_TITLE,
+                       DISPARITY_WINDOW_TITLE,
+                       &_minDisparitySlider,
+                       _maxDisparity,
+                       callbackMinDisparitySlider, this);
+    cv::createTrackbar(SAD_WINDOWS_SIZE_TRACKBAR_TITLE,
+                       DISPARITY_WINDOW_TITLE,
+                       &_SADWindowSizeSlider,
+                       _maxSADWindowSize,
+                       callbackSADWindowsSizeSlider, this);
+}
+
+void DisparityProvider::updateMapWindow() noexcept
+{
+    DisplayManager::showImages(
+            {std::make_tuple(DISPARITY_WINDOW_TITLE,
+             std::make_shared<cv::Mat>(_disparityBlackWhite),
+             1)});
+}
+
 void DisparityProvider::disparityConfigurator() noexcept
 {
     cv::createTrackbar(MIN_DISPARITY_TRACKBAR_TITLE,
@@ -93,7 +144,7 @@ void DisparityProvider::handleSliders() noexcept
         DisplayManager::showImages(
             {std::make_tuple(DISPARITY_WINDOW_TITLE,
                              std::make_shared<cv::Mat>(_disparityBlackWhite),
-                             1)});
+                             100)});
 
         handleESCInterruption();
     }
@@ -101,12 +152,12 @@ void DisparityProvider::handleSliders() noexcept
 
 void DisparityProvider::handleMinDisparitySlider() noexcept
 {
-    _stereoBMState.state -> minDisparity = _minDisparitySlider - 50;
+    _stereoBMState.minDisparity = _minDisparitySlider - 50;
 }
 
 void DisparityProvider::handleSADWindowsSizeSlider() noexcept
 {
-    _stereoBMState.state -> SADWindowSize = 2 * _SADWindowSizeSlider + 5;
+    _stereoBMState.SADWindowSize = 2 * _SADWindowSizeSlider + 5;
 }
 
 void DisparityProvider::handleESCInterruption() const throw (InterruptedByUser)

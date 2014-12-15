@@ -40,9 +40,14 @@ private:
 
     void handleESCInterruption() const throw (InterruptedByUser);
 
+    void static callbackMinDisparitySlider(int newValue, void * object);
+    void static callbackSADWindowsSizeSlider(int newValue, void * object);
+    void static callbackGenerateSlider(int, void * object);
+    void addSliders() noexcept;
 
+    void updateMapWindow() noexcept;
 
-    cv::StereoBM _stereoBMState;
+    cv::StereoSGBM _stereoBMState;
 
     cv::Mat _disparity;
     cv::Mat _disparityBlackWhite;
@@ -55,6 +60,7 @@ private:
     cv::Mat _rectifyMapXRight;
     cv::Mat _rectifyMapYRight;
 
+    int _generateSlider      = 0;
     int _minDisparitySlider  = 50;
     int _maxDisparity        = 100;
     int _SADWindowSizeSlider = 2;
@@ -69,6 +75,7 @@ private:
 
     const std::string MIN_DISPARITY_TRACKBAR_TITLE = "Minimum Disparity";
     const std::string SAD_WINDOWS_SIZE_TRACKBAR_TITLE = "SAD Windows Size";
+    const std::string GENERATE_SLIDER_TITLE = "Generate";
 };
 
 #endif // DISPARITYPROVIDER_H
