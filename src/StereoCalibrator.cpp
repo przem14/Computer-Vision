@@ -102,7 +102,7 @@ void StereoCalibrator::prepareAndDisplayPairImage(
 
     DisplayManager::showImages(
         {std::make_tuple("rectified", 
-                         std::make_shared<cv::Mat>(pairImage), 
+                         std::make_shared<cv::Mat>(pairImage),
                          5000)});
 }
 
@@ -226,16 +226,11 @@ void StereoCalibrator::computeRectification() noexcept
 
 void StereoCalibrator::saveRectifyMaps() const noexcept
 {
-    cv::imwrite(RECTIFY_MAP_X1_OUTPUT_FILE, *_rectifyMapX1);
-    cv::imwrite(RECTIFY_MAP_Y1_OUTPUT_FILE, *_rectifyMapY1);
-    cv::imwrite(RECTIFY_MAP_X2_OUTPUT_FILE, *_rectifyMapX2);
-    cv::imwrite(RECTIFY_MAP_Y2_OUTPUT_FILE, *_rectifyMapY2);
-
     cv::FileStorage fileStorage(RECTIFY_MAPS_OUTPUT_FILE, cv::FileStorage::WRITE);
-    fileStorage << RECTIFY_MAP_X1_TITLE << RECTIFY_MAP_X1_OUTPUT_FILE;
-    fileStorage << RECTIFY_MAP_Y1_TITLE << RECTIFY_MAP_Y1_OUTPUT_FILE;
-    fileStorage << RECTIFY_MAP_X2_TITLE << RECTIFY_MAP_X2_OUTPUT_FILE;
-    fileStorage << RECTIFY_MAP_Y2_TITLE << RECTIFY_MAP_Y2_OUTPUT_FILE;
+    fileStorage << RECTIFY_MAP_X1_TITLE << *_rectifyMapX1;
+    fileStorage << RECTIFY_MAP_Y1_TITLE << *_rectifyMapY1;
+    fileStorage << RECTIFY_MAP_X2_TITLE << *_rectifyMapX2;
+    fileStorage << RECTIFY_MAP_Y2_TITLE << *_rectifyMapY2;
     fileStorage.release();
 }
 

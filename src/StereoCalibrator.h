@@ -123,11 +123,6 @@ private:
     const std::string D2D_MAPPING_MATRIX_OUTPUT_FILE = "d2d_mapping_matrix.yml";
     const std::string RECTIFY_MAPS_OUTPUT_FILE = "rectify_maps.yml";
 
-    const std::string RECTIFY_MAP_X1_OUTPUT_FILE = "rectify_map_x1.jpg";
-    const std::string RECTIFY_MAP_Y1_OUTPUT_FILE = "rectify_map_y1.jpg";
-    const std::string RECTIFY_MAP_X2_OUTPUT_FILE = "rectify_map_x2.jpg";
-    const std::string RECTIFY_MAP_Y2_OUTPUT_FILE = "rectify_map_y2.jpg";
-
     const std::string RECTIFY_MAP_X1_TITLE = "Rectify Map X1";
     const std::string RECTIFY_MAP_Y1_TITLE = "Rectify Map Y1";
     const std::string RECTIFY_MAP_X2_TITLE = "Rectify Map X2";
