@@ -2,6 +2,7 @@
 #define DISPARITYPROVIDER_H
 
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include <string>
 
@@ -13,6 +14,20 @@ public:
     void loadRectifyMaps(std::string& pathToRectifyMaps) noexcept;
 
 private:
+    void prepareImages(std::string& leftImage, std::string& rightImage) noexcept;
+
+    void loadGrayImages(std::string& leftImage, std::string& rightImage)
+        noexcept;
+
+    void remapImages() noexcept;
+    cv::Mat remapImage(cv::Mat& image, cv::Mat& rectifyMapX, cv::Mat& rectifyMapY)
+        const noexcept;
+
+
+
+    cv::Mat _leftImage;
+    cv::Mat _rightImage;
+
     cv::Mat _rectifyMapXLeft;
     cv::Mat _rectifyMapYLeft;
     cv::Mat _rectifyMapXRight;
