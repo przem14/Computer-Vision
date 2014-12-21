@@ -1,7 +1,7 @@
 #include "DisparityProvider.h"
 
 DisparityProvider::DisparityProvider(std::string& pathToRectifyMaps) noexcept
-    : _stereoBMState(0,768,9,200,255,1)
+    : _stereoSGBMState(0,768,9,200,255,1)
 {
     loadRectifyMaps(pathToRectifyMaps);
 }
@@ -31,7 +31,7 @@ void DisparityProvider::computeAndDisplayDisparityMap(
 
 void DisparityProvider::computeDisparityMap() noexcept
 {
-    _stereoBMState(_leftImage, _rightImage, _disparity);
+    _stereoSGBMState(_leftImage, _rightImage, _disparity);
     cv::normalize(_disparity, _disparityBlackWhite, 0, 255, CV_MINMAX, CV_8U);
 }
 
@@ -72,61 +72,61 @@ cv::Mat DisparityProvider::remapImage(cv::Mat& image,
 void DisparityProvider::callbackMinDisparitySlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.minDisparity = newValue - 50;
+    dispProvider->_stereoSGBMState.minDisparity = newValue - 50;
 }
 
 void DisparityProvider::callbackSADWindowsSizeSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.SADWindowSize = 2 * newValue + 5;
+    dispProvider->_stereoSGBMState.SADWindowSize = 2 * newValue + 5;
 }
 
 void DisparityProvider::callbackDisp12MaxDiffSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.disp12MaxDiff = newValue;
+    dispProvider->_stereoSGBMState.disp12MaxDiff = newValue;
 }
 
 void DisparityProvider::callbackPreFilterCapSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.preFilterCap = newValue;
+    dispProvider->_stereoSGBMState.preFilterCap = newValue;
 }
 
 void DisparityProvider::callbackUniquenessRatioSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.uniquenessRatio = newValue;
+    dispProvider->_stereoSGBMState.uniquenessRatio = newValue;
 }
 
 void DisparityProvider::callbackSpecleWindowSizeSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.speckleWindowSize = newValue;
+    dispProvider->_stereoSGBMState.speckleWindowSize = newValue;
 }
 
 void DisparityProvider::callbackSpecleRangeSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.speckleRange = newValue;
+    dispProvider->_stereoSGBMState.speckleRange = newValue;
 }
 
 void DisparityProvider::callbackSmoothnessPar1Slider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.P1 = newValue;
+    dispProvider->_stereoSGBMState.P1 = newValue;
 }
 
 void DisparityProvider::callbackSmoothnessPar2Slider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.P2 = newValue;
+    dispProvider->_stereoSGBMState.P2 = newValue;
 }
 
 void DisparityProvider::callbackNumDisparitiesSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
-    dispProvider->_stereoBMState.numberOfDisparities = 16 * newValue;
+    dispProvider->_stereoSGBMState.numberOfDisparities = 16 * newValue;
 }
 
 void DisparityProvider::callbackGenerateSlider(int, void* object)
@@ -213,48 +213,4 @@ void DisparityProvider::showOptionsWindow() noexcept
         {std::make_tuple(OPTIONS_WINDOW_TITLE,
                          emptyImage,
                          1)});
-}
-
-void DisparityProvider::disparityConfigurator() noexcept
-{
-    cv::createTrackbar(MIN_DISPARITY_TRACKBAR_TITLE,
-                       DISPARITY_WINDOW_TITLE,
-                       &_minDisparitySlider, _maxMinDisparity);
-    cv::createTrackbar(SAD_WINDOWS_SIZE_TRACKBAR_TITLE,
-                       DISPARITY_WINDOW_TITLE,
-                       &_SADWindowSizeSlider, _maxSADWindowSize);
-    handleSliders();
-}
-
-void DisparityProvider::handleSliders() noexcept
-{
-    while(true)
-    {
-        handleMinDisparitySlider();
-        handleSADWindowsSizeSlider();
-
-        computeDisparityMap();
-        DisplayManager::showImages(
-            {std::make_tuple(DISPARITY_WINDOW_TITLE,
-                             std::make_shared<cv::Mat>(_disparityBlackWhite),
-                             100)});
-
-        handleESCInterruption();
-    }
-}
-
-void DisparityProvider::handleMinDisparitySlider() noexcept
-{
-    _stereoBMState.minDisparity = _minDisparitySlider - 50;
-}
-
-void DisparityProvider::handleSADWindowsSizeSlider() noexcept
-{
-    _stereoBMState.SADWindowSize = 2 * _SADWindowSizeSlider + 5;
-}
-
-void DisparityProvider::handleESCInterruption() const throw (InterruptedByUser)
-{
-    char pressedKey = cv::waitKey(50);
-    if (pressedKey == 27) throw InterruptedByUser();
 }

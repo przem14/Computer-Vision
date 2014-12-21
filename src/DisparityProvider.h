@@ -32,14 +32,6 @@ private:
 
     void computeDisparityMap() noexcept;
 
-    void disparityConfigurator() noexcept;
-
-    void handleSliders() noexcept;
-    void handleMinDisparitySlider() noexcept;
-    void handleSADWindowsSizeSlider() noexcept;
-
-    void handleESCInterruption() const throw (InterruptedByUser);
-
     void static callbackMinDisparitySlider(int newValue, void * object);
     void static callbackNumDisparitiesSlider(int newValue, void * object);
     void static callbackSADWindowsSizeSlider(int newValue, void * object);
@@ -56,7 +48,7 @@ private:
     void updateMapWindow() noexcept;
     void showOptionsWindow() noexcept;
 
-    cv::StereoSGBM _stereoBMState;
+    cv::StereoSGBM _stereoSGBMState;
 
     cv::Mat _disparity;
     cv::Mat _disparityBlackWhite;
