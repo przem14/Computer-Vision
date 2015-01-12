@@ -36,7 +36,7 @@ private:
                             const cv::Mat& rightImage,
                             const cv::Size& size) const noexcept;
 
-    cv::Mat columnRange(const cv::Mat& image, 
+    cv::Mat columnRange(const cv::Mat& image,
                         const int startColumn,
                         const int endColumn) const noexcept;
 
@@ -44,16 +44,16 @@ private:
                        const cv::Mat& rectifyMapX1,
                        const cv::Mat& rectifyMapY1) const noexcept;
     cv::Mat resizeImage(const cv::Mat& image) const noexcept;
-    cv::Mat convertToBGRImage(const cv::Mat& grayImage, 
+    cv::Mat convertToBGRImage(const cv::Mat& grayImage,
                               const cv::Size& newImageSize) const noexcept;
 
     cv::Mat createImageWithHorizontalLines(const cv::Mat& image) const noexcept;
- 
+
     cv::Mat captureLeftGrayImage() noexcept;
     cv::Mat captureRightGrayImage()  noexcept;
 
     void prepareAndDisplayPairImage(const cv::Mat& firstGrayImage,
-                                    const cv::Mat& secondGrayImage) 
+                                    const cv::Mat& secondGrayImage)
         const noexcept;
 
     void initIntrinsicsAndDistortions() noexcept;
@@ -74,6 +74,7 @@ private:
 
     void precomputeMapForRemap(const cv::Mat& cameraMatrix1,
                                const cv::Mat& cameraMatrix2) noexcept;
+    void initializeAllImagesPoint();
     void bouguetsMethod();
     void hartleysMethod();
     void computeRectification() noexcept;
@@ -98,6 +99,7 @@ private:
     StereoCalibrationData _calibrationData;
 
     vector<vector<cv::Point2f>> _points[2];
+    vector<cv::Point2f> _allImagesPoints[2];
 
     MatSharedPtr _rectifyMapX1;
     MatSharedPtr _rectifyMapY1;
