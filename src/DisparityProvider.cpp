@@ -33,6 +33,14 @@ void DisparityProvider::computeDisparityMap() noexcept
 {
     _stereoSGBMState(_leftImage, _rightImage, _disparity);
     cv::normalize(_disparity, _disparityBlackWhite, 0, 255, CV_MINMAX, CV_8U);
+
+    cv::Mat mask;
+
+    cv::inRange(_disparityBlackWhite,
+                cv::Scalar(_backgroundRemovalSlider),
+                cv::Scalar(255),
+                mask);
+    cv::bitwise_and(_disparityBlackWhite, mask, _disparityBlackWhite);
 }
 
 void DisparityProvider::prepareImages(std::string& leftImage,
@@ -123,6 +131,10 @@ void DisparityProvider::callbackSmoothnessPar2Slider(int newValue, void* object)
     dispProvider->_stereoSGBMState.P2 = newValue;
 }
 
+void DisparityProvider::callbackBackgroundRemovalSlider(int, void*)
+{
+}
+
 void DisparityProvider::callbackNumDisparitiesSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
@@ -195,6 +207,11 @@ void DisparityProvider::addSliders() noexcept
                        &_smoothnessPar2Slider,
                        _maxSmoothnessPar2,
                        callbackSmoothnessPar2Slider, this);
+    cv::createTrackbar(BACKGROUND_REMOVAL_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_backgroundRemovalSlider,
+                       _maxBackgroundRemoval,
+                       callbackBackgroundRemovalSlider);
 }
 
 void DisparityProvider::updateMapWindow() noexcept
@@ -233,6 +250,6 @@ void DisparityProvider::saveDisparityMap() const noexcept
 {
     cv::FileStorage fileStorage(DISPARITY_MAP_OUTPUT_FILE,
                                 cv::FileStorage::WRITE);
-    fileStorage << DISPARITY_MAP_TITLE << _disparity;
+    fileStorage << DISPARITY_MAP_TITLE << _disparityBlackWhite;
     fileStorage.release();
 }
