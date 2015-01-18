@@ -67,7 +67,7 @@ cv::Mat StereoCalibrator::captureLeftGrayImage() noexcept
 
     _captureLeft.read(image);
     cv::cvtColor(image, grayImage, CV_BGR2GRAY);
-    
+
     return grayImage;
 }
 
@@ -77,7 +77,7 @@ cv::Mat StereoCalibrator::captureRightGrayImage() noexcept
 
     _captureRight.read(image);
     cv::cvtColor(image, grayImage, CV_BGR2GRAY);
-    
+
     return grayImage;
 }
 
@@ -94,13 +94,13 @@ void StereoCalibrator::prepareAndDisplayPairImage(
                           resizeImage(remapImage(secondGrayImage,
                                                  *_rectifyMapX2,
                                                  *_rectifyMapY2)),
-                          cv::Size(resizedPairImageWidth, 
+                          cv::Size(resizedPairImageWidth,
                                    resizedPairImageHeight));
 
-    pairImage = createImageWithHorizontalLines(pairImage); 
+    pairImage = createImageWithHorizontalLines(pairImage);
 
     DisplayManager::showImages(
-        {std::make_tuple("rectified", 
+        {std::make_tuple("rectified",
                          std::make_shared<cv::Mat>(pairImage),
                          5000)});
 }
@@ -136,7 +136,7 @@ cv::Mat StereoCalibrator::createPairImage(const cv::Mat& leftImage,
     return pairImage;
 }
 
-cv::Mat StereoCalibrator::convertToBGRImage(const cv::Mat& grayImage, 
+cv::Mat StereoCalibrator::convertToBGRImage(const cv::Mat& grayImage,
                                             const cv::Size& newImageSize)
     const noexcept
 {
@@ -145,9 +145,9 @@ cv::Mat StereoCalibrator::convertToBGRImage(const cv::Mat& grayImage,
     cv::cvtColor(grayImage, bgrImage, CV_GRAY2BGR);
 
     return bgrImage;
-} 
+}
 
-cv::Mat StereoCalibrator::columnRange(const cv::Mat& image, 
+cv::Mat StereoCalibrator::columnRange(const cv::Mat& image,
                                       const int startColumn,
                                       const int endColumn) const noexcept
 {
@@ -161,8 +161,8 @@ cv::Mat StereoCalibrator::remapImage(const cv::Mat& image,
 {
     cv::Mat remappedImage;
 
-    cv::remap(image, 
-              remappedImage, 
+    cv::remap(image,
+              remappedImage,
               rectifyMapX1,
               rectifyMapY1,
               cv::INTER_LINEAR);
@@ -177,10 +177,10 @@ cv::Mat StereoCalibrator::resizeImage(const cv::Mat& image)
 
     cv::resize(image,
                resizedImage,
-               cv::Size(_image->size().width * RESIZE_FACTOR, 
+               cv::Size(_image->size().width * RESIZE_FACTOR,
                         _image -> size().height * RESIZE_FACTOR),
                cv::INTER_AREA);
-    
+
     return resizedImage;
 }
 
@@ -253,27 +253,28 @@ void StereoCalibrator::bouguetsMethod()
                           _calibrationData.projectionMatrix2());
 }
 
+void StereoCalibrator::initializeAllImagesPoint()
+{
+    for (int i=0; i<2; i++)
+        for (int j=0; j<_calibrationData.imagesAmount(); j++)
+            std::copy(_points[i][j].begin(), _points[i][j].end(),
+                      back_inserter(_allImagesPoints[i]));
+}
 
 void StereoCalibrator::hartleysMethod()
 {
     cv::Mat homographyMatrix1(3, 3, CV_32FC1);
     cv::Mat homographyMatrix2(3, 3, CV_32FC1);
 
-    vector<cv::Point2f> allImagesPoints[2];
-    for (int i = 0; i < 2; i++)
-    {
-        for (int j = 0; j < _calibrationData.imagesAmount(); j++)
-            std::copy(_points[i][j].begin(),
-                      _points[i][j].end(),
-                      back_inserter(allImagesPoints[i]));
-    }
+    initializeAllImagesPoint();
+
     _calibrationData.setFundamentalMatrix(
-        cv::findFundamentalMat(allImagesPoints[LEFT],
-                               allImagesPoints[RIGHT]));
+        cv::findFundamentalMat(_allImagesPoints[LEFT],
+                               _allImagesPoints[RIGHT]));
 
     cv::stereoRectifyUncalibrated(
-        allImagesPoints[LEFT],
-        allImagesPoints[RIGHT],
+        _allImagesPoints[LEFT],
+        _allImagesPoints[RIGHT],
         _calibrationData.fundamentalMatrix(),
         _image -> size(),
         homographyMatrix1, homographyMatrix2, 3);
