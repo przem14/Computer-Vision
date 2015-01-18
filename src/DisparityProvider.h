@@ -48,6 +48,12 @@ private:
     void updateMapWindow() noexcept;
     void showOptionsWindow() noexcept;
 
+    void handleKeyInterruptions() const throw (InterruptedByUser);
+
+    void saveDisparityMap() const noexcept;
+
+
+
     cv::StereoSGBM _stereoSGBMState;
 
     cv::Mat _disparity;
@@ -83,10 +89,13 @@ private:
     const int _maxSmoothnessPar1      = 1250;
     const int _maxSmoothnessPar2      = 5000;
 
-    const std::string RECTIFY_MAP_X1_TITLE = "Rectify Map X1";
-    const std::string RECTIFY_MAP_Y1_TITLE = "Rectify Map Y1";
-    const std::string RECTIFY_MAP_X2_TITLE = "Rectify Map X2";
-    const std::string RECTIFY_MAP_Y2_TITLE = "Rectify Map Y2";
+    const std::string DISPARITY_MAP_OUTPUT_FILE = "disparity_map.yml";
+
+    const std::string DISPARITY_MAP_TITLE   = "Disparity Map";
+    const std::string RECTIFY_MAP_X1_TITLE  = "Rectify Map X1";
+    const std::string RECTIFY_MAP_Y1_TITLE  = "Rectify Map Y1";
+    const std::string RECTIFY_MAP_X2_TITLE  = "Rectify Map X2";
+    const std::string RECTIFY_MAP_Y2_TITLE  = "Rectify Map Y2";
 
     const std::string DISPARITY_WINDOW_TITLE = "Disparity";
     const std::string OPTIONS_WINDOW_TITLE = "Options";
@@ -102,6 +111,9 @@ private:
     const std::string SMOOTHNESS_PAR1_TRACKBAR_TITLE = "Smoothness Par1";
     const std::string SMOOTHNESS_PAR2_TRACKBAR_TITLE = "Smoothness Par2";
     const std::string GENERATE_SLIDER_TITLE = "Generate";
+
+    const char SAVE_KEY   = 's';
+    const char ESCAPE_KEY = 27;
 };
 
 #endif // DISPARITYPROVIDER_H

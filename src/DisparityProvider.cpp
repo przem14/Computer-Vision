@@ -6,9 +6,9 @@ DisparityProvider::DisparityProvider(std::string& pathToRectifyMaps) noexcept
     loadRectifyMaps(pathToRectifyMaps);
 }
 
-void DisparityProvider::loadRectifyMaps(std::string& pathRoRectifyMaps) noexcept
+void DisparityProvider::loadRectifyMaps(std::string& pathToRectifyMaps) noexcept
 {
-    cv::FileStorage fileStorage(pathRoRectifyMaps, cv::FileStorage::READ);
+    cv::FileStorage fileStorage(pathToRectifyMaps, cv::FileStorage::READ);
     fileStorage[RECTIFY_MAP_X1_TITLE] >> _rectifyMapXLeft;
     fileStorage[RECTIFY_MAP_Y1_TITLE] >> _rectifyMapYLeft;
     fileStorage[RECTIFY_MAP_X2_TITLE] >> _rectifyMapXRight;
@@ -26,7 +26,7 @@ void DisparityProvider::computeAndDisplayDisparityMap(
     showOptionsWindow();
 
     addSliders();
-    cv::waitKey(0);
+    handleKeyInterruptions();
 }
 
 void DisparityProvider::computeDisparityMap() noexcept
@@ -213,4 +213,26 @@ void DisparityProvider::showOptionsWindow() noexcept
         {std::make_tuple(OPTIONS_WINDOW_TITLE,
                          emptyImage,
                          1)});
+}
+
+void DisparityProvider::handleKeyInterruptions() const throw(InterruptedByUser)
+{
+    while(char pressedKey = cv::waitKey(0))
+    {
+        if(pressedKey == SAVE_KEY)
+        {
+            saveDisparityMap();
+            break;
+        }
+        else if(pressedKey == ESCAPE_KEY)
+            throw InterruptedByUser();
+    }
+}
+
+void DisparityProvider::saveDisparityMap() const noexcept
+{
+    cv::FileStorage fileStorage(DISPARITY_MAP_OUTPUT_FILE,
+                                cv::FileStorage::WRITE);
+    fileStorage << DISPARITY_MAP_TITLE << _disparity;
+    fileStorage.release();
 }
