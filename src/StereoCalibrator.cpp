@@ -235,7 +235,7 @@ void StereoCalibrator::bouguetsMethod()
 {
     cv::Mat rectTransform1(3, 3, CV_32FC1), rectTransform2(3, 3, CV_32FC1);
     cv::Mat projectionMatrix1(3, 4, CV_32FC1), projectionMatrix2(3, 4, CV_32FC1);
-    cv::Mat d2DMappingMatrix(3, 4, CV_32FC1);
+    cv::Mat d2DMappingMatrix(4, 4, CV_32FC1);
 
     cv::stereoRectify(
         _calibrationData.intrinsic(LEFT), _calibrationData.distortion(LEFT),
@@ -248,6 +248,7 @@ void StereoCalibrator::bouguetsMethod()
 
     _calibrationData.setRectTransforms(rectTransform1, rectTransform2);
     _calibrationData.setProjectionMatrices(projectionMatrix1, projectionMatrix2);
+    _calibrationData.setD2DMappingMatrix(d2DMappingMatrix);
 
     precomputeMapForRemap(_calibrationData.projectionMatrix1(),
                           _calibrationData.projectionMatrix2());

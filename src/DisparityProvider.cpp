@@ -38,7 +38,7 @@ void DisparityProvider::computeDisparityMap() noexcept
 
     cv::inRange(_disparityBlackWhite,
                 cv::Scalar(_backgroundRemovalSlider),
-                cv::Scalar(255),
+                cv::Scalar(255 - _foregroundRemovalSlider),
                 mask);
     cv::bitwise_and(_disparityBlackWhite, mask, _disparityBlackWhite);
 }
@@ -135,6 +135,10 @@ void DisparityProvider::callbackBackgroundRemovalSlider(int, void*)
 {
 }
 
+void DisparityProvider::callbackForegroundRemovalSlider(int, void*)
+{
+}
+
 void DisparityProvider::callbackNumDisparitiesSlider(int newValue, void* object)
 {
     DisparityProvider* dispProvider = (DisparityProvider*) object;
@@ -212,6 +216,11 @@ void DisparityProvider::addSliders() noexcept
                        &_backgroundRemovalSlider,
                        _maxBackgroundRemoval,
                        callbackBackgroundRemovalSlider);
+    cv::createTrackbar(FOREGROUND_REMOVAL_TRACKBAR_TITLE,
+                       OPTIONS_WINDOW_TITLE,
+                       &_foregroundRemovalSlider,
+                       _maxForegroundRemoval,
+                       callbackForegroundRemovalSlider);
 }
 
 void DisparityProvider::updateMapWindow() noexcept

@@ -76,7 +76,7 @@ private:
     cv::Mat _projectionMatrix2  = cv::Mat(3, 4, CV_32FC1);
     cv::Mat _homographyMatrix1  = cv::Mat(3, 3, CV_32FC1);
     cv::Mat _homographyMatrix2  = cv::Mat(3, 3, CV_32FC1);
-    cv::Mat _d2DMappingMatrix   = cv::Mat(3, 4, CV_32FC1);
+    cv::Mat _d2DMappingMatrix   = cv::Mat(4, 4, CV_32FC1);
 
     const std::string STEREO_ROTATION_TITLE     = "Stereo Rotation Matrix";
     const std::string STEREO_TRANSLATION_TITLE  = "Stereo Translation Vector";

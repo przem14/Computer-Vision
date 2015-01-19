@@ -43,6 +43,7 @@ private:
     void static callbackSmoothnessPar1Slider(int newValue, void * object);
     void static callbackSmoothnessPar2Slider(int newValue, void * object);
     void static callbackBackgroundRemovalSlider(int, void *);
+    void static callbackForegroundRemovalSlider(int, void *);
     void static callbackGenerateSlider(int, void * object);
     void addSliders() noexcept;
 
@@ -80,6 +81,7 @@ private:
     int _smoothnessPar1Slider         = 200;
     int _smoothnessPar2Slider         = 255;
     int _backgroundRemovalSlider      = 0;
+    int _foregroundRemovalSlider      = 0;
     const int _maxMinDisparity        = 100;
     const int _maxNumDisparities      = 64;
     const int _maxSADWindowSize       = 125;
@@ -91,6 +93,7 @@ private:
     const int _maxSmoothnessPar1      = 1250;
     const int _maxSmoothnessPar2      = 5000;
     const int _maxBackgroundRemoval   = 255;
+    const int _maxForegroundRemoval   = 255;
 
     const std::string DISPARITY_MAP_OUTPUT_FILE = "disparity_map.yml";
 
@@ -114,6 +117,7 @@ private:
     const std::string SMOOTHNESS_PAR1_TRACKBAR_TITLE = "Smoothness Par1";
     const std::string SMOOTHNESS_PAR2_TRACKBAR_TITLE = "Smoothness Par2";
     const std::string BACKGROUND_REMOVAL_TRACKBAR_TITLE = "Background Removal";
+    const std::string FOREGROUND_REMOVAL_TRACKBAR_TITLE = "Foreground Removal";
     const std::string GENERATE_SLIDER_TITLE = "Generate";
 
     const char SAVE_KEY   = 's';
